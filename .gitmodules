@@ -1,0 +1,9 @@
+[submodule "external/stb"]
+	path = external/stb
+	url = https://github.com/nothings/stb
+[submodule "external/portable-file-dialogs"]
+	path = external/portable-file-dialogs
+	url = https://github.com/samhocevar/portable-file-dialogs
+[submodule "external/imgui"]
+	path = external/imgui
+	url = https://github.com/ocornut/imgui
