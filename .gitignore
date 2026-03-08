@@ -1,0 +1,26 @@
+# Binaries
+*.o
+*.so
+*/*.o
+*/*/*.o
+*.a
+*.framework
+*.exe
+*.dll
+*.pdb
+build/
+CMakeLists.txt.*
+cmake_install.cmake
+*.orig
+*.cbp
+*.dsw
+*.vsxproj
+*.vsproj
+*.sln
+.lock*
+.vscode/
+.vs/
+CMakeSettings.json
+CMakeFiles
+CMakeCache.txt
+Makefile
