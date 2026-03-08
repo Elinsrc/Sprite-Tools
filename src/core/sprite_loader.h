@@ -71,6 +71,8 @@ public:
     static const char* GetTexFormatString(uint32_t fmt);
     static const char* GetFaceTypeString(uint32_t ft);
 
+    bool LoadFromMemory(const uint8_t* data, size_t size, const std::string& name);
+
 private:
     bool LoadQ1Sprite(const uint8_t* data, size_t size);
     bool LoadHLSprite(const uint8_t* data, size_t size);

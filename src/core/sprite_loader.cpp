@@ -392,3 +392,43 @@ const char* SpriteLoader::GetFaceTypeString(uint32_t ft)
         return "Unknown";
     }
 }
+
+bool SpriteLoader::LoadFromMemory(const uint8_t* data, size_t size, const std::string& name)
+{
+    Unload();
+
+    if (size < sizeof(dsprite_t))
+    {
+        fprintf(stderr, "Data too small\n");
+        return false;
+    }
+
+    dsprite_t header;
+    memcpy(&header, data, sizeof(header));
+
+    if (header.ident != IDSPRITEHEADER)
+    {
+        fprintf(stderr, "Invalid sprite header\n");
+        return false;
+    }
+
+    m_data.filepath = name;
+    m_data.version  = header.version;
+
+    bool result = false;
+    switch (header.version)
+    {
+        case SPRITE_VERSION_Q1:
+            result = LoadQ1Sprite(data, size);
+            break;
+        case SPRITE_VERSION_HL:
+            result = LoadHLSprite(data, size);
+            break;
+        default:
+            fprintf(stderr, "Unknown sprite version: %d\n", header.version);
+            return false;
+    }
+
+    m_data.loaded = result;
+    return result;
+}
