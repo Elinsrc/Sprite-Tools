@@ -129,6 +129,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
   
       - name: Set tag name
         run: |
@@ -154,17 +155,12 @@ jobs:
         run: |
           echo "Listing all artifacts in artifacts/:"
           ls -R artifacts/
-      
-      - name: Prepare files
-        run: |
-          mkdir files
-          find artifacts/ -type f -exec cp {} files/ \;
-  
+          
       - name: Upload new release
         run: |
           gh release create "$TAG_NAME" \
             --title "$RELEASE_NAME" \
-            --prerelease artifacts/files/* \
+            --prerelease artifacts/* \
             --repo ${{ github.repository }} \
             --target ${{ github.sha }}
         env:
