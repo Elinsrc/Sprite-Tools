@@ -12,59 +12,31 @@ elseif(UNIX)
     message(STATUS "Platform: Linux")
 endif()
 
-set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/external/imgui)
-set(STB_DIR ${CMAKE_SOURCE_DIR}/external/stb)
-set(PFD_DIR ${CMAKE_SOURCE_DIR}/external/portable-file-dialogs)
-set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
+add_subdirectory(external/glfw)
 
-set(IMGUI_SOURCES
-    ${IMGUI_DIR}/imgui.cpp
-    ${IMGUI_DIR}/imgui_demo.cpp
-    ${IMGUI_DIR}/imgui_draw.cpp
-    ${IMGUI_DIR}/imgui_tables.cpp
-    ${IMGUI_DIR}/imgui_widgets.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+set(SOURCES
+    src/main.cpp
+    src/ui.cpp
+    src/sprite_loader.cpp
+    src/renderer.cpp
+
+    external/imgui/imgui.cpp
+    external/imgui/imgui_demo.cpp
+    external/imgui/imgui_draw.cpp
+    external/imgui/imgui_tables.cpp
+    external/imgui/imgui_widgets.cpp
+    external/imgui/backends/imgui_impl_glfw.cpp
+    external/imgui/backends/imgui_impl_opengl3.cpp
 )
 
-
-find_package(glfw3 3.3 QUIET)
-
-if(NOT glfw3_FOUND)
-    message(STATUS "GLFW not found, downloading...")
-    include(FetchContent)
-    FetchContent_Declare(glfw
-        GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.3.8
-    )
-    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(glfw)
-endif()
-
-list(APPEND IMGUI_SOURCES ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp)
-
-
-set(PROJECT_SOURCES
-    ${SRC_DIR}/ui.cpp
-    ${SRC_DIR}/main.cpp
-    ${SRC_DIR}/sprite_loader.cpp
-    ${SRC_DIR}/renderer.cpp
-)
-
-set(ALL_SOURCES
-    ${PROJECT_SOURCES}
-    ${IMGUI_SOURCES}
-)
-
-add_executable(${PROJECT_NAME} ${ALL_SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${SRC_DIR}
-    ${IMGUI_DIR}
-    ${IMGUI_DIR}/backends
-    ${STB_DIR} 
-    ${PFD_DIR}
+    src
+    external/imgui
+    external/imgui/backends
+    external/stb
+    external/portable-file-dialogs
 )
 
 if(PLATFORM_WIN32)
