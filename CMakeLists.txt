@@ -34,6 +34,7 @@ else()
     set(SOURCES
         src/main.cpp
         src/ui.cpp
+        src/ui_utils.cpp
         src/core/sprite_loader.cpp
         src/renderer.cpp
 
@@ -51,6 +52,7 @@ else()
     target_include_directories(${PROJECT_NAME} PRIVATE
         src
         src/core
+        src/icons
         external/imgui
         external/imgui/backends
         external/stb

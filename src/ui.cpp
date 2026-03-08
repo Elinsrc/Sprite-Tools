@@ -1,11 +1,38 @@
 #include "ui.h"
 
+#include "icons.h"
+
+ImGuiImage m_pCenterFocus;
+ImGuiImage m_pFolder;
+ImGuiImage m_pNavigateBefore;
+ImGuiImage m_pNavigateNext;
+ImGuiImage m_pPause;
+ImGuiImage m_pPlay;
+ImGuiImage m_pSkipNext;
+ImGuiImage m_pSkipPrevious;
+ImGuiImage m_pZoomIn;
+ImGuiImage m_pZoomOut;
+
 #include <cstdio>
 #include <cstdarg>
 #include <cmath>
 #include <algorithm>
 
 #include "portable-file-dialogs.h"
+
+void UI::LoadIcons()
+{
+    m_pCenterFocus = UI_utils::LoadImageFromMemory(center_focus_strong_png, center_focus_strong_png_len);
+    m_pFolder = UI_utils::LoadImageFromMemory(folder_png, folder_png_len);
+    m_pNavigateBefore = UI_utils::LoadImageFromMemory(navigate_before_png, navigate_before_png_len);
+    m_pNavigateNext = UI_utils::LoadImageFromMemory(navigate_next_png, navigate_next_png_len);
+    m_pPause = UI_utils::LoadImageFromMemory(pause_png, pause_png_len);
+    m_pPlay = UI_utils::LoadImageFromMemory(play_png, play_png_len);
+    m_pSkipNext= UI_utils::LoadImageFromMemory(skip_next_png, skip_next_png_len);
+    m_pSkipPrevious = UI_utils::LoadImageFromMemory(skip_previous_png, skip_previous_png_len);
+    m_pZoomIn = UI_utils::LoadImageFromMemory(zoom_in_png, zoom_in_png_len);
+    m_pZoomOut = UI_utils::LoadImageFromMemory(zoom_out_png, zoom_out_png_len);
+}
 
 void UI::SetupTheme()
 {
@@ -114,7 +141,7 @@ void UI::Tooltip(const char* text)
     }
 }
 
-bool UI::ToolBtn(const char* label, const char* tip, bool active, bool enabled)
+bool UI::ImgToolBtn(const char* id, ImGuiImage& img, const char* tip, bool active, bool enabled, float size)
 {
     if (!enabled)
         ImGui::BeginDisabled();
@@ -123,10 +150,11 @@ bool UI::ToolBtn(const char* label, const char* tip, bool active, bool enabled)
     {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.60f, 0.95f, 0.70f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.50f, 0.68f, 1.00f, 0.80f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.00f, 1.00f, 1.00f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.55f, 0.72f, 1.00f, 0.90f));
     }
 
-    bool pressed = ImGui::Button(label, ImVec2(30, 26));
+    ImVec2 btn_size(size + 8, size + 8);
+    bool pressed = ImGui::ImageButton(id, (ImTextureID)(intptr_t)img.texture, ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0, 0, 0, 0), ImVec4(1, 1, 1, 1));
 
     if (tip)
         Tooltip(tip);
@@ -404,11 +432,12 @@ void UI::DrawMenuBar()
 
 void UI::DrawToolbar()
 {
-    if (!m_app.show_toolbar) 
+    if (!m_app.show_toolbar)
         return;
 
     ImGuiViewport* vp = ImGui::GetMainViewport();
     float h = 38.0f;
+    float iconSize = 20.0f;
 
     ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x, vp->WorkPos.y));
     ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x, h));
@@ -427,23 +456,23 @@ void UI::DrawToolbar()
     bool loaded = m_app.sprite_loaded;
     bool multi  = loaded && m_app.total_frames > 1;
 
-    if (ToolBtn("O", "Open (Ctrl+O)"))
+    if (ImgToolBtn("##open", m_pFolder, "Open (Ctrl+O)"))
         OpenFileDialog();
     ImGui::SameLine();
 
     ToolSep();
 
-    if (ToolBtn("|<", "First (Home)", false, multi))
+    if (ImgToolBtn("##first", m_pSkipPrevious, "First (Home)", false, multi, iconSize))
         m_app.current_frame = 0;
     ImGui::SameLine();
 
-    if (ToolBtn("<", "Previous (Left)", false, multi))
+    if (ImgToolBtn("##prev", m_pNavigateBefore, "Previous (Left)", false, multi, iconSize))
         m_app.current_frame = (m_app.current_frame - 1 + std::max(1, m_app.total_frames)) % std::max(1, m_app.total_frames);
     ImGui::SameLine();
-
     {
         bool playing = m_app.animating;
-        if (ToolBtn(playing ? "||" : ">##play", "Play/Pause (Space)", playing, multi))
+        ImGuiImage& playIcon = playing ? m_pPause : m_pPlay;
+        if (ImgToolBtn("##playpause", playIcon, "Play/Pause (Space)", playing, multi, iconSize))
         {
             m_app.animating = !m_app.animating;
             if (m_app.animating)
@@ -455,11 +484,11 @@ void UI::DrawToolbar()
     }
     ImGui::SameLine();
 
-    if (ToolBtn(">", "Next (Right)", false, multi))
+    if (ImgToolBtn("##next", m_pNavigateNext, "Next (Right)", false, multi, iconSize))
         m_app.current_frame = (m_app.current_frame + 1) % std::max(1, m_app.total_frames);
     ImGui::SameLine();
 
-    if (ToolBtn(">|", "Last (End)", false, multi))
+    if (ImgToolBtn("##last", m_pSkipNext, "Last (End)", false, multi, iconSize))
         m_app.current_frame = std::max(0, m_app.total_frames - 1);
 
     ImGui::SameLine();
@@ -474,7 +503,7 @@ void UI::DrawToolbar()
     ImGui::SameLine();
     ToolSep();
 
-    if (ToolBtn("-", "Zoom out (-)"))
+    if (ImgToolBtn("##zoomout", m_pZoomOut, "Zoom out (-)", false, true, iconSize))
     {
         m_app.zoom = std::max(0.25f, m_app.zoom * 0.5f);
         m_app.scroll_x = m_app.scroll_y = 0;
@@ -490,11 +519,11 @@ void UI::DrawToolbar()
     Tooltip("Zoom (Ctrl+Wheel)");
     ImGui::SameLine();
 
-    if (ToolBtn("+", "Zoom in (+)"))
+    if (ImgToolBtn("##zoomin", m_pZoomIn, "Zoom in (+)", false, true, iconSize))
         m_app.zoom = std::min(16.0f, m_app.zoom * 2.0f);
     ImGui::SameLine();
 
-    if (ToolBtn("1:1", "100% (1)"))
+    if (ImgToolBtn("##center", m_pCenterFocus, "100% (1)", false, true, iconSize))
     {
         m_app.zoom = 1.0f;
         m_app.scroll_x = m_app.scroll_y = 0;

@@ -9,6 +9,8 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
+#include "ui_utils.h"
+
 struct AppState
 {
     SpriteLoader loader;
@@ -52,6 +54,7 @@ public:
     UI() = default;
     ~UI() = default;
 
+    void LoadIcons();
     void SetupTheme();
     void RenderFrame();
 
@@ -70,7 +73,7 @@ public:
 
 private:
     void Tooltip(const char* text);
-    bool ToolBtn(const char* label, const char* tip, bool active = false, bool enabled = true);
+    bool ImgToolBtn(const char* id, ImGuiImage& img, const char* tip = nullptr, bool active = false, bool enabled = true, float size = 20.0f);
     void ToolSep();
     void Section(const char* text);
     void PropRow(const char* label, const char* fmt, ...);

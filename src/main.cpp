@@ -47,6 +47,8 @@ int main(int argc, char* argv[])
 
     UI ui;
     g_ui = &ui;
+    
+    ui.LoadIcons();
     ui.SetupTheme();
 
     glfwSetDropCallback(window, DropCallback);
