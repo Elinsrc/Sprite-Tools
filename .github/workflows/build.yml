@@ -1,0 +1,171 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build Android
+        run: ./gradlew assembleDebug
+        working-directory: android
+
+      - name: Extract branch name
+        shell: bash
+        id: extract_branch
+        run: echo "branch=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '_')" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        run: mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/sprite-tools_debug.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sprite-Tools-${{ steps.extract_branch.outputs.branch }}-android
+          path: android/app/build/outputs/apk/debug/sprite-tools_debug.apk
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Install development tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            libgl1-mesa-dev \
+            libglfw3-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libwayland-dev \
+            libxkbcommon-dev
+
+      - name: Build on Linux
+        run: |
+            cmake -B build -DCMAKE_BUILD_TYPE=Release
+            cmake --build build --config Release
+
+      - name: Extract branch name
+        shell: bash
+        id: extract_branch
+        run: echo "branch=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '_')" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sprite-Tools-${{ steps.extract_branch.outputs.branch }}-linux
+          path: build/SpriteTools
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Set developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build on Windows
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+      - name: Extract branch name
+        shell: bash
+        id: extract_branch
+        run: echo "branch=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '_')" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sprite-Tools-${{ steps.extract_branch.outputs.branch }}-windows
+          path: build/Release/SpriteTools.exe
+
+  release:
+    name: Upload release
+    runs-on: ubuntu-latest
+    needs: [android, linux, windows]
+    if: ${{ github.event_name == 'push' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+  
+      - name: Fetch artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+  
+      - name: Set tag name
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "master" ]; then
+            TAG_NAME="continuous"
+          else
+            TAG_NAME="continuous-${GITHUB_REF_NAME}"
+          fi
+          RELEASE_NAME="Sprite-Tools $TAG_NAME Build"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+  
+      - name: Remove old release if exists
+        run: |
+          if gh release list --repo ${{ github.repository }} | grep -q -e "$TAG_NAME"; then
+            echo "Deleting existing release $TAG_NAME"
+            gh release delete "$TAG_NAME" --yes --cleanup-tag --repo ${{ github.repository }}
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+      - name: List downloaded artifacts
+        run: |
+          echo "Listing all artifacts in artifacts/:"
+          ls -R artifacts/
+      
+      - name: Prepare files
+        run: |
+          mkdir files
+          find artifacts/ -type f -exec cp {} files/ \;
+  
+      - name: Upload new release
+        run: |
+          gh release create "$TAG_NAME" \
+            --title "$RELEASE_NAME" \
+            --prerelease artifacts/files/* \
+            --repo ${{ github.repository }} \
+            --target ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
