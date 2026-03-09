@@ -24,8 +24,6 @@ fun MainScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showMenu by remember { mutableStateOf(false) }
-
-
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     Box(
@@ -72,7 +70,30 @@ fun MainScreen(
                                 leadingIcon = { Icon(Icons.Default.Close, null) }
                             )
                         }
+
                         Divider()
+
+                        DropdownMenuItem(
+                            text = { Text("Export Frames...") },
+                            onClick = {
+                                showMenu = false
+                                viewModel.showExportDialog(true)
+                            },
+                            enabled = state.isLoaded,
+                            leadingIcon = { Icon(Icons.Default.SaveAlt, null) }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Create SPR from Images...") },
+                            onClick = {
+                                showMenu = false
+                                viewModel.showImportDialog(true)
+                            },
+                            leadingIcon = { Icon(Icons.Default.AddPhotoAlternate, null) }
+                        )
+
+                        Divider()
+
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -125,9 +146,6 @@ fun MainScreen(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-                }
-
-                if (state.isLoaded) {
                     Text(
                         "${(state.zoom * 100).toInt()}%",
                         color = SpriteColors.TextDim,
@@ -153,9 +171,7 @@ fun MainScreen(
                     onZoomIn = { viewModel.zoomIn() },
                     onZoomOut = { viewModel.zoomOut() },
                     onResetZoom = { viewModel.resetZoom() },
-                    onZoomChanged = { viewModel.setZoom(it) },
-                    onFrameChanged = { viewModel.setFrame(it) },
-                    onOpenFile = onOpenFile
+                    onFrameChanged = { viewModel.setFrame(it) }
                 )
             }
 
@@ -164,7 +180,7 @@ fun MainScreen(
                 modifier = Modifier.weight(1f),
                 onOffsetChanged = { x, y -> viewModel.setOffset(x, y) },
                 onZoomChanged = { viewModel.setZoom(it) },
-                onOpenFile = onOpenFile
+                onViewportSizeChanged = { w, h -> viewModel.onViewportSizeChanged(w, h) },
             )
 
             StatusBar(state = state)
@@ -183,20 +199,15 @@ fun MainScreen(
                     ) {
                         Spacer(Modifier.height(8.dp))
                         Box(
-                            modifier = Modifier
+                            Modifier
                                 .width(32.dp)
                                 .height(4.dp)
-                                .background(
-                                    SpriteColors.TextDim,
-                                    RoundedCornerShape(2.dp)
-                                )
+                                .background(SpriteColors.TextDim, RoundedCornerShape(2.dp))
                         )
                         Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Properties",
+                        Text("Properties",
                             color = SpriteColors.TextSection,
-                            style = MaterialTheme.typography.titleSmall
-                        )
+                            style = MaterialTheme.typography.titleSmall)
                         Spacer(Modifier.height(8.dp))
                     }
                 }
@@ -213,5 +224,40 @@ fun MainScreen(
 
     if (state.showAbout) {
         AboutDialog(onDismiss = { viewModel.showAbout(false) })
+    }
+
+    if (state.showExportDialog && state.isLoaded) {
+        ExportDialog(
+            state = state,
+            onDismiss = { viewModel.showExportDialog(false) },
+            onExportAll = { dir, name, fmt ->
+                viewModel.exportAllFrames(dir, name, fmt)
+            },
+            onExportCurrent = { file, fmt ->
+                viewModel.exportCurrentFrame(file, fmt)
+            }
+        )
+    }
+
+    if (state.showImportDialog) {
+        ImportDialog(
+            onDismiss = { viewModel.showImportDialog(false) },
+            onCreateSpr = { uris, file, ver, type, fmt, interval ->
+                viewModel.createSprFromUris(uris, file, ver, type, fmt, interval)
+            }
+        )
+    }
+
+    if (state.showProgress) {
+        ProgressDialog(
+            title = state.progressTitle,
+            status = state.progressStatus,
+            progress = state.progressValue,
+            isDone = state.progressDone,
+            isSuccess = state.progressSuccess,
+            resultMessage = state.progressResult,
+            onCancel = { viewModel.cancelConvert() },
+            onDismiss = { viewModel.dismissProgress() }
+        )
     }
 }

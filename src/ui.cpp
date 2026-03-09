@@ -1,5 +1,5 @@
 #include "ui.h"
-
+#include "sprite_converter.h"
 #include "icons.h"
 
 ImGuiImage m_pCenterFocus;
@@ -17,8 +17,10 @@ ImGuiImage m_pZoomOut;
 #include <cstdarg>
 #include <cmath>
 #include <algorithm>
+#include <fstream>
 
 #include "portable-file-dialogs.h"
+#include "stb_image.h"
 
 void UI::LoadIcons()
 {
@@ -336,6 +338,15 @@ void UI::DrawMenuBar()
 
         if (ImGui::MenuItem("Close", nullptr, false, m_app.sprite_loaded))
             CloseSprite();
+        
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Export Frames...", "Ctrl+E",
+            false, m_app.sprite_loaded))
+            m_conv.show_export = true;
+
+        if (ImGui::MenuItem("Import Images to SPR...", "Ctrl+I"))
+            m_conv.show_import = true;
 
         ImGui::Separator();
 
@@ -976,30 +987,67 @@ void UI::DrawStatusBar()
 
 void UI::DrawAbout()
 {
-    if (!m_app.show_about) return;
+    if (!m_app.show_about)
+        return;
 
     ImGui::OpenPopup("About##dlg");
-    ImGui::SetNextWindowSize(ImVec2(360, 180), ImGuiCond_Appearing);
+    ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_Appearing);
 
     if (ImGui::BeginPopupModal("About##dlg", &m_app.show_about,
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar))
     {
+        float footer_height = ImGui::GetFrameHeightWithSpacing() + 10.0f;
+
+        ImGui::BeginChild("about_content", ImVec2(0, -footer_height), false);
+
         ImGui::Spacing();
+
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.45f, 0.62f, 0.95f, 1.0f));
         ImGui::Text("Sprite-Tools");
         ImGui::PopStyleColor();
 
         ImGui::Spacing();
-        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 100) * 0.5f);
-        if (ImGui::Button("OK", ImVec2(100, 0)))
+        ImGui::TextWrapped("Sprite viewer and creator for Quake / Half-Life sprites");
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        ImGui::Text("Github:");
+        ImGui::SameLine();
+
+        ImGui::TextColored(ImVec4(0.45f, 0.62f, 0.95f, 1.0f), "https://github.com/Elinsrc/Sprite-Tools");
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            ImGui::SetTooltip("Open GitHub repository");
+
+            if (ImGui::IsItemClicked())
+            {
+#ifdef _WIN32
+                ShellExecuteA(0, "open", "https://github.com/Elinsrc/Sprite-Tools", 0, 0, SW_SHOWNORMAL);
+#else
+                system("xdg-open https://github.com/Elinsrc/Sprite-Tools");
+#endif
+            }
+        }
+
+        ImGui::EndChild();
+
+        ImGui::Separator();
+
+        float button_width = 100.0f;
+        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - button_width) * 0.5f);
+
+        if (ImGui::Button("OK", ImVec2(button_width, 0)))
         {
             m_app.show_about = false;
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::EndPopup();
     }
 }
-
 void UI::HandleKeys()
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -1061,15 +1109,592 @@ void UI::HandleKeys()
 
     if (ImGui::IsKeyPressed(ImGuiKey_T))
         m_app.show_toolbar = !m_app.show_toolbar;
+    
+    if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_E) && m_app.sprite_loaded)
+    {
+        m_conv.show_export = true;
+        return;
+    }
+
+    if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_I))
+    {
+        m_conv.show_import = true;
+        return;
+    }
+}
+
+void UI::DrawExportDialog()
+{
+    if (!m_conv.show_export) 
+        return;
+    
+    if (!m_app.sprite_loaded)
+    {
+        m_conv.show_export = false;
+        return;
+    }
+
+    if (m_task.running.load()) 
+        return;
+
+    ImGui::OpenPopup("Export Frames##dlg");
+    ImGui::SetNextWindowSize(ImVec2(360, 200), ImGuiCond_Appearing);
+
+    if (ImGui::BeginPopupModal("Export Frames##dlg", &m_conv.show_export, ImGuiWindowFlags_NoResize))
+    {
+        Section("Output Format");
+
+        const char* fmts[] = { "PNG (with alpha)", "BMP (no alpha)" };
+        ImGui::Combo("Format", &m_conv.export_format, fmts, 2);
+
+        Section("Frame Selection");
+
+        ImGui::RadioButton("All frames", &m_conv.export_frame, -1);
+        ImGui::SameLine();
+        ImGui::RadioButton("Current only", &m_conv.export_frame, m_app.current_frame);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        float bw = 110;
+        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - bw * 2 - 8) * 0.5f);
+
+        if (ImGui::Button("Export...", ImVec2(bw, 0)))
+        {
+            ImGui::CloseCurrentPopup();
+            StartExport();
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(bw, 0)))
+        {
+            m_conv.show_export = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
+void UI::DrawImportDialog()
+{
+    if (!m_conv.show_import) 
+        return;
+    
+    if (m_task.running.load()) 
+        return;
+
+    ImGui::OpenPopup("Create SPR##dlg");
+    ImGui::SetNextWindowSize(ImVec2(480, 420), ImGuiCond_Appearing);
+
+    if (ImGui::BeginPopupModal("Create SPR##dlg", &m_conv.show_import, ImGuiWindowFlags_NoResize))
+    {
+        Section("Input Images");
+
+        if (ImGui::Button("Add Images..."))
+        {
+            auto sel = pfd::open_file("Select Images", m_app.last_dir, { "Images", "*.png *.bmp", "All", "*" }, pfd::opt::multiselect).result();
+
+            for (const auto& s : sel)
+                m_conv.import_files.push_back(s);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Clear All"))
+            m_conv.import_files.clear();
+
+        ImGui::Text("%d file(s)", (int)m_conv.import_files.size());
+
+        if (!m_conv.import_files.empty())
+        {
+            ImGui::BeginChild("##filelist", ImVec2(0, 90), ImGuiChildFlags_Borders);
+
+            int rm = -1;
+            for (int i = 0; i < (int)m_conv.import_files.size(); i++)
+            {
+                ImGui::PushID(i);
+                if (ImGui::SmallButton("X")) rm = i;
+                ImGui::SameLine();
+                ImGui::TextUnformatted(GetFilename(m_conv.import_files[i]).c_str());
+                ImGui::PopID();
+            }
+            if (rm >= 0)
+                m_conv.import_files.erase(m_conv.import_files.begin() + rm);
+
+            ImGui::EndChild();
+        }
+
+        Section("Sprite Parameters");
+
+        const char* vers[] = { "Quake (v1)", "Half-Life (v2)" };
+        int vi = m_conv.import_version - 1;
+        if (ImGui::Combo("Version", &vi, vers, 2))
+            m_conv.import_version = vi + 1;
+
+        const char* types[] = {
+            "Parallel Upright", 
+            "Facing Upright",
+            "Parallel", 
+            "Oriented", 
+            "Parallel Oriented"
+        };
+        ImGui::Combo("Type", &m_conv.import_type, types, 5);
+
+        if (m_conv.import_version == 2)
+        {
+            const char* tfmts[] = {
+                "Normal", 
+                "Additive",
+                "Index Alpha", 
+                "Alpha Test"
+            };
+            ImGui::Combo("Render Mode",&m_conv.import_tex_format, tfmts, 4);
+        }
+
+        ImGui::SliderFloat("Interval", &m_conv.import_interval, 0.01f, 1.0f, "%.3f s");
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        bool can = !m_conv.import_files.empty();
+        if (!can) 
+            ImGui::BeginDisabled();
+
+        float bw = 110;
+        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - bw * 2 - 8) * 0.5f);
+
+        if (ImGui::Button("Create SPR...", ImVec2(bw, 0)))
+        {
+            ImGui::CloseCurrentPopup();
+            StartImport();
+        }
+
+        if (!can) ImGui::EndDisabled();
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(bw, 0)))
+        {
+            m_conv.show_import = false;
+            m_conv.import_files.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
+void UI::StartTask(const std::string& title, std::function<void(TaskState&)> work)
+{
+    if (m_task.running.load())
+        return;
+
+    if (m_task.worker.joinable())
+        m_task.worker.join();
+
+    m_task.running.store(true);
+    m_task.done.store(false);
+    m_task.cancel_requested.store(false);
+    m_task.progress.store(0.0f);
+    m_task.result_success = false;
+    m_task.pending_open_file.clear();
+
+    {
+        std::lock_guard<std::mutex> lock(m_task.mutex);
+        m_task.title = title;
+        m_task.status = "Starting...";
+        m_task.result_message.clear();
+    }
+
+    m_task.worker = std::thread([this, work]()
+    {
+        work(m_task);
+
+        m_task.progress.store(1.0f);
+        m_task.running.store(false);
+        m_task.done.store(true);
+    });
+}
+
+void UI::DrawProgressDialog()
+{
+    if (!m_task.running.load() && !m_task.done.load()) 
+        return;
+
+    std::string title, status, result;
+    {
+        std::lock_guard<std::mutex> lock(m_task.mutex);
+        title = m_task.title;
+        status = m_task.status;
+        result = m_task.result_message;
+    }
+
+    float progress = m_task.progress.load();
+    bool is_running = m_task.running.load();
+    bool is_done = m_task.done.load();
+
+    std::string popup_id = title + "##progress";
+
+    ImGui::SetNextWindowSizeConstraints(ImVec2(400, -1), ImVec2(400, -1));
+
+    if (!ImGui::IsPopupOpen(popup_id.c_str()))
+        ImGui::OpenPopup(popup_id.c_str());
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings;
+
+    bool open = true;
+    if (ImGui::BeginPopupModal(popup_id.c_str(), nullptr, flags))
+    {
+        if (is_running)
+        {
+            ImGui::TextWrapped("%s", status.c_str());
+            ImGui::Spacing();
+
+            char pct[32];
+            snprintf(pct, sizeof(pct), "%.0f%%", progress * 100.0f);
+            ImGui::ProgressBar(progress, ImVec2(-1, 0), pct);
+
+            ImGui::Spacing();
+
+            double t = ImGui::GetTime();
+            int dots = ((int)(t * 3.0)) % 4;
+            char anim[8] = "       ";
+            for (int i = 0; i < dots; i++) anim[i] = '.';
+            anim[dots] = '\0';
+
+            ImGui::TextDisabled("Working%s", anim);
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            float bw = 120.0f;
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - bw) * 0.5f);
+            if (ImGui::Button("Cancel", ImVec2(bw, 0)))
+            {
+                m_task.cancel_requested.store(true);
+                std::lock_guard<std::mutex> lock(m_task.mutex);
+                m_task.status = "Cancelling...";
+            }
+        }
+        else if (is_done)
+        {
+            if (m_task.result_success)
+                ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "Success!");
+            else
+                ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Failed!");
+
+            ImGui::Spacing();
+
+            if (!result.empty())
+            {
+                ImGui::TextWrapped("%s", result.c_str());
+                ImGui::Spacing();
+            }
+
+            ImGui::ProgressBar(1.0f, ImVec2(-1, 0), "Done");
+            
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            float bw = 120.0f;
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - bw) * 0.5f);
+            if (ImGui::Button("OK", ImVec2(bw, 0)))
+            {
+                m_task.done.store(false);
+                ImGui::CloseCurrentPopup();
+
+                if (!m_task.pending_open_file.empty())
+                {
+                    m_app.pending_file = m_task.pending_open_file;
+                    m_task.pending_open_file.clear();
+                }
+
+                if (m_task.worker.joinable())
+                    m_task.worker.join();
+            }
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
+void UI::StartExport()
+{
+    std::string spr_path = m_app.loader.GetData().filepath;
+    int format = m_conv.export_format;
+    int frame_idx = m_conv.export_frame;
+    int total = m_app.total_frames;
+
+    auto dir = pfd::select_folder("Output Directory", m_app.last_dir).result();
+
+    if (dir.empty()) 
+        return;
+
+    std::string prefix = GetFilename(spr_path);
+    size_t dot = prefix.rfind('.');
+    if (dot != std::string::npos) prefix = prefix.substr(0, dot);
+
+    m_conv.show_export = false;
+
+    StartTask("Exporting Frames", [=](TaskState& task)
+    {
+        SpriteLoader loader;
+
+        {
+            std::lock_guard<std::mutex> lock(task.mutex);
+            task.status = "Loading sprite...";
+        }
+
+        if (!loader.Load(spr_path))
+        {
+            std::lock_guard<std::mutex> lock(task.mutex);
+            task.result_message = "Failed to load sprite";
+            task.result_success = false;
+            return;
+        }
+
+        int t = loader.GetTotalFrameCount();
+        int start = 0, end_idx = t;
+
+        if (frame_idx >= 0 && frame_idx < t)
+        {
+            start = frame_idx;
+            end_idx = frame_idx + 1;
+        }
+
+        int count = end_idx - start;
+        int exported = 0;
+        std::string ext = SpriteConverter::GetFormatExtension(static_cast<ImageFormat>(format));
+
+        for (int i = start; i < end_idx; i++)
+        {
+            if (task.cancel_requested.load())
+            {
+                std::lock_guard<std::mutex> lock(task.mutex);
+                task.result_message = "Cancelled. Exported " +
+                    std::to_string(exported) + " file(s)";
+                task.result_success = false;
+                return;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(task.mutex);
+                task.status = "Exporting frame " +
+                    std::to_string(i + 1) + " / " +
+                    std::to_string(end_idx) + "...";
+            }
+
+            SpriteFrame* frame = loader.GetFrame(i);
+            if (!frame || frame->rgba.empty())
+            {
+                std::lock_guard<std::mutex> lock(task.mutex);
+                task.result_message = "Failed to get frame " + std::to_string(i);
+                task.result_success = false;
+                return;
+            }
+
+            char fname[512];
+            if (t == 1 && frame_idx < 0)
+                snprintf(fname, sizeof(fname), "%s/%s%s", dir.c_str(), prefix.c_str(), ext.c_str());
+            else
+                snprintf(fname, sizeof(fname), "%s/%s_%03d%s", dir.c_str(), prefix.c_str(), i, ext.c_str());
+
+            SprToImageParams p;
+            p.output_dir = dir;
+            p.output_prefix = prefix;
+            p.format = static_cast<ImageFormat>(format);
+            p.frame_index = i;
+
+            if (!SpriteConverter::SaveImageRGBA(fname, frame->rgba.data(), frame->width, frame->height, static_cast<ImageFormat>(format)))
+            {
+                std::lock_guard<std::mutex> lock(task.mutex);
+                task.result_message = "Failed to save: " + std::string(fname);
+                task.result_success = false;
+                return;
+            }
+
+            exported++;
+            task.progress.store((float)(i - start + 1) / (float)count);
+        }
+
+        std::lock_guard<std::mutex> lock(task.mutex);
+        task.result_message = "Exported " + std::to_string(exported) + " file(s) to:\n" + dir;
+        task.result_success = true;
+    });
+}
+
+void UI::StartImport()
+{
+    auto save = pfd::save_file("Save Sprite", m_app.last_dir + "/output.spr", { "Sprite (*.spr)", "*.spr" }).result();
+
+    if (save.empty()) return;
+
+    if (save.size() < 4 || save.substr(save.size() - 4) != ".spr")
+        save += ".spr";
+
+    std::vector<std::string> files = m_conv.import_files;
+    int version = m_conv.import_version;
+    int type = m_conv.import_type;
+    int tex_format = m_conv.import_tex_format;
+    float interval = m_conv.import_interval;
+
+    m_conv.show_import = false;
+    m_conv.import_files.clear();
+
+    StartTask("Creating Sprite", [=](TaskState& task)
+    {
+        int total = (int)files.size();
+
+        std::vector<std::vector<uint8_t>> rgba_storage;
+        std::vector<const uint8_t*> rgba_ptrs;
+        std::vector<int> widths, heights;
+
+        for (int i = 0; i < total; i++)
+        {
+            if (task.cancel_requested.load())
+            {
+                std::lock_guard<std::mutex> lock(task.mutex);
+                task.result_message = "Cancelled";
+                task.result_success = false;
+                return;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(task.mutex);
+                task.status = "Loading image " +
+                    std::to_string(i + 1) + " / " +
+                    std::to_string(total) + "...";
+            }
+
+            std::vector<uint8_t> rgba;
+            int w, h, ch;
+            uint8_t* px = stbi_load(files[i].c_str(), &w, &h, &ch, 4);
+
+            if (!px)
+            {
+                std::lock_guard<std::mutex> lock(task.mutex);
+                std::string fn = files[i];
+                size_t sl = fn.find_last_of("/\\");
+                if (sl != std::string::npos) fn = fn.substr(sl + 1);
+                task.result_message = "Failed to load: " + fn;
+                task.result_success = false;
+                return;
+            }
+
+            rgba.assign(px, px + (size_t)w * h * 4);
+            stbi_image_free(px);
+
+            if (w > 4096 || h > 4096 || w <= 0 || h <= 0)
+            {
+                std::lock_guard<std::mutex> lock(task.mutex);
+                task.result_message = "Bad image size: " +
+                    std::to_string(w) + "x" + std::to_string(h);
+                task.result_success = false;
+                return;
+            }
+
+            widths.push_back(w);
+            heights.push_back(h);
+            rgba_storage.push_back(std::move(rgba));
+
+            task.progress.store((float)(i + 1) / (float)(total * 3));
+        }
+
+        if (task.cancel_requested.load())
+        {
+            std::lock_guard<std::mutex> lock(task.mutex);
+            task.result_message = "Cancelled";
+            task.result_success = false;
+            return;
+        }
+
+        for (auto& v : rgba_storage)
+            rgba_ptrs.push_back(v.data());
+
+        {
+            std::lock_guard<std::mutex> lock(task.mutex);
+            task.status = "Building palette...";
+        }
+
+        task.progress.store(0.4f);
+
+        ImageToSprParams p;
+        p.version = version;
+        p.type = (uint32_t)type;
+        p.tex_format = (uint32_t)tex_format;
+        p.interval = interval;
+
+        auto result = SpriteConverter::RGBAToSprMemory(rgba_ptrs, widths, heights, p);
+
+        if (task.cancel_requested.load())
+        {
+            std::lock_guard<std::mutex> lock(task.mutex);
+            task.result_message = "Cancelled";
+            task.result_success = false;
+            return;
+        }
+
+        task.progress.store(0.8f);
+
+        if (!result.success)
+        {
+            std::lock_guard<std::mutex> lock(task.mutex);
+            task.result_message = result.error;
+            task.result_success = false;
+            return;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(task.mutex);
+            task.status = "Saving sprite...";
+        }
+
+        std::ofstream file(save, std::ios::binary);
+        if (!file.is_open())
+        {
+            std::lock_guard<std::mutex> lock(task.mutex);
+            task.result_message = "Failed to create file";
+            task.result_success = false;
+            return;
+        }
+
+        file.write(reinterpret_cast<const char*>(result.data.data()),
+            (std::streamsize)result.data.size());
+        file.close();
+
+        task.progress.store(1.0f);
+
+        std::string fn = save;
+        size_t sl = fn.find_last_of("/\\");
+        if (sl != std::string::npos) fn = fn.substr(sl + 1);
+
+        {
+            std::lock_guard<std::mutex> lock(task.mutex);
+            task.result_message = "Created: " + fn + "\n" +
+                std::to_string(total) + " frame(s), " +
+                std::to_string(result.data.size()) + " bytes";
+            task.result_success = true;
+            task.pending_open_file = save;
+        }
+    });
 }
 
 void UI::RenderFrame()
 {
     HandleKeys();
+    ProcessPendingFile();
     DrawMenuBar();
     DrawToolbar();
     DrawViewport();
     DrawProperties();
     DrawStatusBar();
     DrawAbout();
+    DrawExportDialog();
+    DrawImportDialog();
+    DrawProgressDialog();
 }

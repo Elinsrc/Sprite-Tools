@@ -2,6 +2,10 @@
 
 #include <string>
 #include <chrono>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <functional>
 
 #include "sprite_loader.h"
 #include "renderer.h"
@@ -96,4 +100,46 @@ private:
     static std::string GetFilename(const std::string& path);
 
     AppState m_app;
+
+    void DrawExportDialog();
+    void DrawImportDialog();
+
+    struct ConverterState
+    {
+        bool show_export = false;
+        bool show_import = false;
+        int export_format = 0;
+        int export_frame = -1;
+
+        std::vector<std::string> import_files;
+        int import_version = 2;
+        int import_type = 2;
+        int import_tex_format = 0;
+        float import_interval = 0.1f;
+    } m_conv;
+
+    struct TaskState
+    {
+        std::atomic<bool> running{false};
+        std::atomic<bool> done{false};
+        std::atomic<bool> cancel_requested{false};
+        std::atomic<float> progress{0.0f};
+        
+        std::mutex mutex;
+        std::string title;
+        std::string status;      
+        std::string result_message;
+        bool result_success = false;
+
+        std::string pending_open_file;
+        
+        std::thread worker;
+    } m_task;
+
+    void DrawProgressDialog();
+    void StartTask(const std::string& title, std::function<void(TaskState&)> work);
+
+    void StartExport();
+    void StartImport();
+
 };

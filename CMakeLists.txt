@@ -18,12 +18,15 @@ endif()
 if(PLATFORM_ANDROID)
 
     add_library(${PROJECT_NAME} SHARED
+        src/core/sprite_converter_capi.cpp
+        src/core/sprite_converter.cpp
         src/core/sprite_loader.cpp
         src/core/sprite_core.cpp
         src/core/sprite_jni.cpp
+        src/core/stb_impl.cpp
     )
 
-    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/core external/stb)
 
     target_link_libraries(${PROJECT_NAME} android log)
 
@@ -35,7 +38,9 @@ else()
         src/main.cpp
         src/ui.cpp
         src/ui_utils.cpp
+        src/core/stb_impl.cpp
         src/core/sprite_loader.cpp
+        src/core/sprite_converter.cpp
         src/renderer.cpp
 
         external/imgui/imgui.cpp

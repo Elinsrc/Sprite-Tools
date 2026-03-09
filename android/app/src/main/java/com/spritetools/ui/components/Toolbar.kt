@@ -18,7 +18,6 @@ import com.spritetools.viewmodel.SpriteUiState
 @Composable
 fun SpriteToolbar(
     state: SpriteUiState,
-    onOpenFile: () -> Unit,
     onFirstFrame: () -> Unit,
     onPrevFrame: () -> Unit,
     onTogglePlay: () -> Unit,
@@ -28,7 +27,6 @@ fun SpriteToolbar(
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     onResetZoom: () -> Unit,
-    onZoomChanged: (Float) -> Unit,
     onFrameChanged: (Int) -> Unit
 ) {
     val multi = state.totalFrames > 1

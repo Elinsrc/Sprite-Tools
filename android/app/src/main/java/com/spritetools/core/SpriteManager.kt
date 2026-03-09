@@ -9,6 +9,8 @@ import java.io.Closeable
 class SpriteManager : Closeable {
     private var handle: Long = 0
 
+    val nativeHandle: Long get() = handle
+
     val isLoaded: Boolean get() = handle != 0L
     var fileName: String = ""
         private set
@@ -121,16 +123,6 @@ class SpriteManager : Closeable {
             Log.e(TAG, "getPalette failed", e)
             null
         }
-    }
-
-    fun exportFrame(index: Int, outputPath: String, format: String): Boolean {
-        if (handle == 0L) return false
-        return SpriteNative.nativeExportFrame(handle, index, outputPath, format) == 0
-    }
-
-    fun exportAllFrames(outputDir: String, format: String, pattern: String? = null): Boolean {
-        if (handle == 0L) return false
-        return SpriteNative.nativeExportAllFrames(handle, outputDir, format, pattern) == 0
     }
 
     override fun close() {

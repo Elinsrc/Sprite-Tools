@@ -1,6 +1,5 @@
 #include "ui_utils.h"
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #ifdef PLATFORM_WIN32

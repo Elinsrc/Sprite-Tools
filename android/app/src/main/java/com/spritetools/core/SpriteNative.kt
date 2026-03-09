@@ -12,10 +12,9 @@ object SpriteNative {
     @JvmStatic external fun nativeGetFrameARGB(handle: Long, frameIndex: Int): IntArray?
     @JvmStatic external fun nativeGetPalette(handle: Long): ByteArray?
     @JvmStatic external fun nativeGetGroupInfo(handle: Long, groupIndex: Int): IntArray?
-    @JvmStatic external fun nativeExportFrame(
-        handle: Long, frameIndex: Int, outputPath: String, format: String
-    ): Int
-    @JvmStatic external fun nativeExportAllFrames(
-        handle: Long, outputDir: String, format: String, pattern: String?
-    ): Int
+    @JvmStatic external fun nativeExportFrameToImage(handle: Long, frameIndex: Int, format: Int): ByteArray?
+
+    @JvmStatic external fun nativeCreateSprFromImages(imageDataArray: Array<ByteArray>, version: Int, type: Int, texFormat: Int, interval: Float): ByteArray?
+
+    @JvmStatic external fun nativeGetLastError(): String?
 }

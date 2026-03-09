@@ -13,9 +13,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.File
+import kotlin.coroutines.coroutineContext
 
 data class SpriteUiState(
     val isLoaded: Boolean = false,
@@ -44,7 +47,19 @@ data class SpriteUiState(
     val palette: List<Int>? = null,
 
     val showAbout: Boolean = false,
-    val showExportDialog: Boolean = false
+
+    val showExportDialog: Boolean = false,
+    val showImportDialog: Boolean = false,
+
+    val showProgress: Boolean = false,
+    val progressTitle: String = "",
+    val progressStatus: String = "",
+    val progressValue: Float = 0f,
+    val progressDone: Boolean = false,
+    val progressSuccess: Boolean = false,
+    val progressResult: String = "",
+
+    val pendingLoadUri: Uri? = null
 )
 
 data class GroupDisplayInfo(
@@ -66,19 +81,31 @@ class SpriteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private val manager = SpriteManager()
+    private val converter = SpriteConverter()
     private val mutex = Mutex()
 
     private val _state = MutableStateFlow(SpriteUiState())
     val state: StateFlow<SpriteUiState> = _state.asStateFlow()
 
     private var playJob: Job? = null
+    private var convertJob: Job? = null
 
     private val bitmapCache = mutableMapOf<Int, Bitmap>()
+
+    private var viewportWidth = 0
+    private var viewportHeight = 0
+
+    fun onViewportSizeChanged(w: Int, h: Int) {
+        viewportWidth = w
+        viewportHeight = h
+    }
 
     override fun onCleared() {
         super.onCleared()
         playJob?.cancel()
         playJob = null
+        convertJob?.cancel()
+        convertJob = null
         bitmapCache.clear()
         manager.close()
     }
@@ -97,7 +124,6 @@ class SpriteViewModel(application: Application) : AndroidViewModel(application) 
                     )
 
                     bitmapCache.clear()
-
                     manager.close()
 
                     val context = getApplication<Application>()
@@ -113,11 +139,31 @@ class SpriteViewModel(application: Application) : AndroidViewModel(application) 
                         val frameInfo = manager.getFrameInfo(0)
                         val bitmap = loadBitmap(0)
 
-                        val maxDim = maxOf(frameInfo?.width ?: 1, frameInfo?.height ?: 1)
-                        val initialZoom = when {
-                            maxDim < 64 -> 4.0f
-                            maxDim < 128 -> 2.0f
-                            else -> 1.0f
+                        val imgW = frameInfo?.width ?: 1
+                        val imgH = frameInfo?.height ?: 1
+                        var initialZoom = 1.0f
+
+                        if (viewportWidth > 0 && viewportHeight > 0) {
+                            val padding = 0.9f
+                            val scaleX = (viewportWidth * padding) / imgW
+                            val scaleY = (viewportHeight * padding) / imgH
+                            val fitScale = minOf(scaleX, scaleY)
+
+                            initialZoom = if (fitScale < 1.0f) {
+                                fitScale
+                            } else {
+                                when {
+                                    imgW < 64 && imgH < 64 -> 4.0f
+                                    imgW < 128 && imgH < 128 -> 2.0f
+                                    else -> 1.0f
+                                }
+                            }
+                        } else {
+                            initialZoom = when {
+                                imgW < 64 -> 4.0f
+                                imgW < 128 -> 2.0f
+                                else -> 1.0f
+                            }
                         }
 
                         _state.value = SpriteUiState(
@@ -274,7 +320,10 @@ class SpriteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setZoom(zoom: Float) {
-        _state.value = _state.value.copy(zoom = zoom.coerceIn(0.25f, 16.0f))
+        val z = zoom.coerceIn(0.1f, 16.0f)
+        if (_state.value.zoom != z) {
+            _state.value = _state.value.copy(zoom = z)
+        }
     }
 
     fun zoomIn() = setZoom(_state.value.zoom * 2.0f)
@@ -284,6 +333,7 @@ class SpriteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setOffset(x: Float, y: Float) {
+        // Просто обновляем стейт, не сбрасывая ничего другого
         _state.value = _state.value.copy(offsetX = x, offsetY = y)
     }
 
@@ -301,6 +351,238 @@ class SpriteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun showAbout(show: Boolean) {
         _state.value = _state.value.copy(showAbout = show)
+    }
+
+    fun showExportDialog(show: Boolean) {
+        _state.value = _state.value.copy(showExportDialog = show)
+    }
+
+    fun showImportDialog(show: Boolean) {
+        _state.value = _state.value.copy(showImportDialog = show)
+    }
+
+    fun dismissProgress() {
+        val pendingUri = _state.value.pendingLoadUri
+
+        _state.value = _state.value.copy(
+            showProgress = false,
+            progressDone = false,
+            pendingLoadUri = null
+        )
+
+        if (pendingUri != null) {
+            loadFile(pendingUri)
+        }
+    }
+
+    fun exportAllFrames(
+        outputDir: File,
+        baseName: String,
+        format: ImageExportFormat
+    ) {
+        val s = _state.value
+        if (!s.isLoaded) return
+
+        val handle = manager.nativeHandle
+        val totalFrames = s.totalFrames
+
+        _state.value = _state.value.copy(
+            showExportDialog = false,
+            showProgress = true,
+            progressTitle = "Exporting Frames",
+            progressStatus = "Starting...",
+            progressValue = 0f,
+            progressDone = false
+        )
+
+        convertJob?.cancel()
+        convertJob = viewModelScope.launch(Dispatchers.IO) {
+            outputDir.mkdirs()
+            val exported = mutableListOf<String>()
+
+            for (i in 0 until totalFrames) {
+                if (!coroutineContext[Job]!!.isActive) {
+                    updateProgress("Cancelled", 0f, true, false,
+                        "Exported ${exported.size} file(s)")
+                    return@launch
+                }
+
+                updateProgress(
+                    "Exporting frame ${i + 1} / $totalFrames...",
+                    (i + 1).toFloat() / totalFrames,
+                    false, false, ""
+                )
+
+                val name = if (totalFrames == 1)
+                    "$baseName${format.ext}"
+                else
+                    "${baseName}_%03d${format.ext}".format(i)
+
+                val file = File(outputDir, name)
+                val result = converter.exportFrameToFile(
+                    handle, i, file, format)
+
+                if (!result.success) {
+                    updateProgress(
+                        "Failed", 0f, true, false,
+                        result.error ?: "Export failed at frame $i"
+                    )
+                    return@launch
+                }
+
+                exported.addAll(result.files)
+            }
+
+            updateProgress(
+                "Done!", 1f, true, true,
+                "Saved to:\n${outputDir.absolutePath}"
+            )
+        }
+    }
+
+    fun exportCurrentFrame(
+        outputFile: File,
+        format: ImageExportFormat
+    ) {
+        val s = _state.value
+        if (!s.isLoaded) return
+
+        _state.value = _state.value.copy(
+            showExportDialog = false,
+            showProgress = true,
+            progressTitle = "Exporting Frame",
+            progressStatus = "Saving...",
+            progressValue = 0.5f,
+            progressDone = false
+        )
+
+        convertJob?.cancel()
+        convertJob = viewModelScope.launch(Dispatchers.IO) {
+            val result = converter.exportFrameToFile(
+                manager.nativeHandle, _state.value.currentFrame,
+                outputFile, format)
+
+            if (result.success) {
+                updateProgress("Done!", 1f, true, true,
+                    "Saved: ${outputFile.name}")
+            } else {
+                updateProgress("Failed", 0f, true, false,
+                    result.error ?: "Export failed")
+            }
+        }
+    }
+
+    fun createSprFromUris(
+        uris: List<Uri>,
+        outputFile: File,
+        version: Int,
+        type: SprType,
+        texFormat: SprTexFormat,
+        interval: Float
+    ) {
+        _state.value = _state.value.copy(
+            showImportDialog = false,
+            showProgress = true,
+            progressTitle = "Creating Sprite",
+            progressStatus = "Loading images...",
+            progressValue = 0f,
+            progressDone = false,
+            pendingLoadUri = null
+        )
+
+        convertJob?.cancel()
+        convertJob = viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            val total = uris.size
+            val imageData = mutableListOf<ByteArray>()
+
+            for ((i, uri) in uris.withIndex()) {
+                if (!coroutineContext[Job]!!.isActive) {
+                    updateProgress("Cancelled", 0f, true, false, "")
+                    return@launch
+                }
+
+                updateProgress(
+                    "Loading image ${i + 1} / $total...",
+                    (i + 1).toFloat() / (total * 2),
+                    false, false, ""
+                )
+
+                try {
+                    val stream = context.contentResolver.openInputStream(uri)
+                    if (stream == null) {
+                        updateProgress("Failed", 0f, true, false,
+                            "Cannot open image ${i + 1}")
+                        return@launch
+                    }
+                    imageData.add(stream.readBytes())
+                    stream.close()
+                } catch (e: Exception) {
+                    updateProgress("Failed", 0f, true, false,
+                        "Error reading image: ${e.message}")
+                    return@launch
+                }
+            }
+
+            if (!coroutineContext[Job]!!.isActive) {
+                updateProgress("Cancelled", 0f, true, false, "")
+                return@launch
+            }
+
+            updateProgress("Building sprite...", 0.6f, false, false, "")
+
+            val result = converter.createFromImageData(
+                imageData, version, type, texFormat, interval)
+
+            if (!result.success || result.data == null) {
+                updateProgress("Failed", 0f, true, false,
+                    result.error ?: "Conversion failed")
+                return@launch
+            }
+
+            updateProgress("Saving...", 0.9f, false, false, "")
+
+            try {
+                outputFile.parentFile?.mkdirs()
+                outputFile.writeBytes(result.data)
+            } catch (e: Exception) {
+                updateProgress("Failed", 0f, true, false,
+                    "Save error: ${e.message}")
+                return@launch
+            }
+
+            updateProgress("Done!", 1f, true, true,
+                "Created: ${outputFile.name}\n" +
+                        "Path: ${outputFile.parent}\n" +
+                        "$total frame(s), ${result.data.size} bytes")
+
+            _state.value = _state.value.copy(pendingLoadUri = Uri.fromFile(outputFile))
+        }
+    }
+
+    fun cancelConvert() {
+        convertJob?.cancel()
+        convertJob = null
+        _state.value = _state.value.copy(
+            showProgress = false,
+            progressDone = false
+        )
+    }
+
+    private fun updateProgress(
+        status: String,
+        value: Float,
+        done: Boolean,
+        success: Boolean,
+        result: String
+    ) {
+        _state.value = _state.value.copy(
+            progressStatus = status,
+            progressValue = value,
+            progressDone = done,
+            progressSuccess = success,
+            progressResult = result
+        )
     }
 
     private fun loadBitmap(index: Int): Bitmap? {

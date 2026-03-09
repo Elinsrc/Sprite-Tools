@@ -43,9 +43,7 @@ struct SpriteData
     std::string filepath;
     bool loaded;
 
-    SpriteData() : version(0), type(0), texFormat(0), boundingradius(0),
-                   numframes(0), facetype(0), synctype(0),
-                   palette_colors(0), loaded(false)
+    SpriteData() : version(0), type(0), texFormat(0), boundingradius(0), numframes(0), facetype(0), synctype(0), palette_colors(0), loaded(false)
     {
         bounds[0] = bounds[1] = 0;
         memset(palette, 0, sizeof(palette));
