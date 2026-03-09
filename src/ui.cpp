@@ -1530,7 +1530,7 @@ void UI::StartExport()
 
 void UI::StartImport()
 {
-    auto save = pfd::save_file("Save Sprite", m_app.last_dir + "/output.spr", { "Sprite (*.spr)", "*.spr" }).result();
+    auto save = pfd::save_file("Save Sprite", m_app.last_dir, { "Sprite (*.spr)", "*.spr" }).result();
 
     if (save.empty()) return;
 
