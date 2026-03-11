@@ -8,11 +8,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.spritetools.R
 import com.spritetools.ui.theme.SpriteColors
+import com.spritetools.ui.theme.SpriteToolsTheme
 
 @Composable
 fun ProgressDialog(
@@ -65,18 +69,18 @@ fun ProgressDialog(
                         animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Restart),
                         label = ""
                     )
-                    Text("Working" + ".".repeat(dots.toInt()), fontSize = 12.sp, color = SpriteColors.TextDim)
+                    Text(stringResource(R.string.progress_working) + ".".repeat(dots.toInt()), fontSize = 12.sp, color = SpriteColors.TextDim)
 
                     Spacer(Modifier.height(12.dp))
                     Divider(color = SpriteColors.Border)
                     Spacer(Modifier.height(8.dp))
 
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Button("Cancel", width = 100.dp, onClick = onCancel)
+                        Button(stringResource(R.string.btn_cancel), width = 100.dp, onClick = onCancel)
                     }
                 } else {
                     Text(
-                        if (isSuccess) "Success!" else "Failed",
+                        if (isSuccess) stringResource(R.string.progress_success) else stringResource(R.string.progress_failed),
                         fontSize = 14.sp,
                         color = if (isSuccess) SpriteColors.Success else SpriteColors.Error
                     )
@@ -99,7 +103,7 @@ fun ProgressDialog(
                     Spacer(Modifier.height(8.dp))
 
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Button("OK", width = 100.dp, onClick = onDismiss)
+                        Button(stringResource(R.string.btn_ok), width = 100.dp, onClick = onDismiss)
                     }
                 }
             }
@@ -120,5 +124,22 @@ private fun Button(text: String, width: androidx.compose.ui.unit.Dp? = null, onC
         modifier = Modifier.height(26.dp).then(if (width != null) Modifier.width(width) else Modifier)
     ) {
         Text(text, fontSize = 13.sp)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProgressDialogLoadingPreview() {
+    SpriteToolsTheme {
+        ProgressDialog(
+            title = "Exporting Sprite",
+            status = "Processing frames...",
+            progress = 0.45f,
+            isDone = false,
+            isSuccess = false,
+            resultMessage = "",
+            onCancel = {},
+            onDismiss = {}
+        )
     }
 }

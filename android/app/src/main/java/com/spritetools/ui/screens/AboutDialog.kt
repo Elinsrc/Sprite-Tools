@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -19,7 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.tooling.preview.Preview
+import com.spritetools.R
 import com.spritetools.ui.theme.SpriteColors
+import com.spritetools.ui.theme.SpriteToolsTheme
 
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
@@ -34,7 +38,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 color = SpriteColors.TextPrimary
             )
         ) {
-            append("Github: ")
+            append(stringResource(R.string.about_github_prefix))
         }
 
         pushStringAnnotation(
@@ -69,7 +73,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
             ) {
 
                 Text(
-                    "About",
+                    stringResource(R.string.menu_about),
                     fontSize = 14.sp,
                     color = SpriteColors.TextPrimary
                 )
@@ -77,7 +81,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 Spacer(Modifier.height(10.dp))
 
                 Text(
-                    "Sprite-Tools",
+                    stringResource(R.string.app_name),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = SpriteColors.Accent
@@ -86,7 +90,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 Spacer(Modifier.height(6.dp))
 
                 Text(
-                    "Sprite viewer and creator for Quake / Half-Life sprite formats",
+                    stringResource(R.string.about_desc),
                     fontSize = 12.sp,
                     color = SpriteColors.TextPrimary,
                     lineHeight = 18.sp
@@ -127,10 +131,18 @@ fun AboutDialog(onDismiss: () -> Unit) {
                             .height(26.dp)
                             .width(100.dp)
                     ) {
-                        Text("OK", fontSize = 13.sp)
+                        Text(stringResource(R.string.btn_ok), fontSize = 13.sp)
                     }
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AboutDialogPreview() {
+    SpriteToolsTheme {
+        AboutDialog(onDismiss = {})
     }
 }

@@ -1,5 +1,6 @@
 package com.spritetools.ui.screens
 
+import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -10,11 +11,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.spritetools.R
+import com.spritetools.core.*
 import com.spritetools.ui.components.*
 import com.spritetools.ui.theme.SpriteColors
+import com.spritetools.ui.theme.SpriteToolsTheme
+import com.spritetools.viewmodel.SpriteUiState
 import com.spritetools.viewmodel.SpriteViewModel
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,6 +31,70 @@ fun MainScreen(
     onOpenFile: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    MainScreenContent(
+        state = state,
+        onOpenFile = onOpenFile,
+        onCloseFile = { viewModel.closeFile() },
+        onShowExportDialog = { viewModel.showExportDialog(it) },
+        onShowImportDialog = { viewModel.showImportDialog(it) },
+        onToggleToolbar = { viewModel.toggleToolbar() },
+        onToggleChecker = { viewModel.toggleChecker() },
+        onShowAbout = { viewModel.showAbout(it) },
+        onToggleProperties = { viewModel.toggleProperties() },
+        onFirstFrame = { viewModel.firstFrame() },
+        onPrevFrame = { viewModel.prevFrame() },
+        onTogglePlay = { viewModel.togglePlayback() },
+        onNextFrame = { viewModel.nextFrame() },
+        onLastFrame = { viewModel.lastFrame() },
+        onSpeedChanged = { viewModel.setPlaybackSpeed(it) },
+        onZoomIn = { viewModel.zoomIn() },
+        onZoomOut = { viewModel.zoomOut() },
+        onResetZoom = { viewModel.resetZoom() },
+        onFrameChanged = { viewModel.setFrame(it) },
+        onOffsetChanged = { x, y -> viewModel.setOffset(x, y) },
+        onZoomChanged = { viewModel.setZoom(it) },
+        onViewportSizeChanged = { w, h -> viewModel.onViewportSizeChanged(w, h) },
+        onExportAll = { dir, name, fmt -> viewModel.exportAllFrames(dir, name, fmt) },
+        onExportCurrent = { file, fmt -> viewModel.exportCurrentFrame(file, fmt) },
+        onCreateSpr = { uris, file, ver, type, fmt, interval ->
+            viewModel.createSprFromUris(uris, file, ver, type, fmt, interval)
+        },
+        onCancelConvert = { viewModel.cancelConvert() },
+        onDismissProgress = { viewModel.dismissProgress() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreenContent(
+    state: SpriteUiState,
+    onOpenFile: () -> Unit,
+    onCloseFile: () -> Unit,
+    onShowExportDialog: (Boolean) -> Unit,
+    onShowImportDialog: (Boolean) -> Unit,
+    onToggleToolbar: () -> Unit,
+    onToggleChecker: () -> Unit,
+    onShowAbout: (Boolean) -> Unit,
+    onToggleProperties: () -> Unit,
+    onFirstFrame: () -> Unit,
+    onPrevFrame: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onNextFrame: () -> Unit,
+    onLastFrame: () -> Unit,
+    onSpeedChanged: (Float) -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onResetZoom: () -> Unit,
+    onFrameChanged: (Int) -> Unit,
+    onOffsetChanged: (Float, Float) -> Unit,
+    onZoomChanged: (Float) -> Unit,
+    onViewportSizeChanged: (Int, Int) -> Unit,
+    onExportAll: (File, String, ImageExportFormat) -> Unit,
+    onExportCurrent: (File, ImageExportFormat) -> Unit,
+    onCreateSpr: (List<Uri>, File, Int, SprType, SprTexFormat, Float) -> Unit,
+    onCancelConvert: () -> Unit,
+    onDismissProgress: () -> Unit
+) {
     var showMenu by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
@@ -49,7 +121,7 @@ fun MainScreen(
                     IconButton(onClick = { showMenu = true }) {
                         Icon(
                             Icons.Default.Menu,
-                            contentDescription = "Menu",
+                            contentDescription = stringResource(R.string.app_name),
                             tint = SpriteColors.TextPrimary,
                             modifier = Modifier.size(22.dp)
                         )
@@ -59,14 +131,14 @@ fun MainScreen(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Open") },
+                            text = { Text(stringResource(R.string.menu_open)) },
                             onClick = { showMenu = false; onOpenFile() },
                             leadingIcon = { Icon(Icons.Default.FolderOpen, null) }
                         )
                         if (state.isLoaded) {
                             DropdownMenuItem(
-                                text = { Text("Close") },
-                                onClick = { showMenu = false; viewModel.closeFile() },
+                                text = { Text(stringResource(R.string.menu_close)) },
+                                onClick = { showMenu = false; onCloseFile() },
                                 leadingIcon = { Icon(Icons.Default.Close, null) }
                             )
                         }
@@ -74,20 +146,20 @@ fun MainScreen(
                         Divider()
 
                         DropdownMenuItem(
-                            text = { Text("Export Frames...") },
+                            text = { Text(stringResource(R.string.menu_export_frames)) },
                             onClick = {
                                 showMenu = false
-                                viewModel.showExportDialog(true)
+                                onShowExportDialog(true)
                             },
                             enabled = state.isLoaded,
                             leadingIcon = { Icon(Icons.Default.SaveAlt, null) }
                         )
 
                         DropdownMenuItem(
-                            text = { Text("Create SPR from Images...") },
+                            text = { Text(stringResource(R.string.menu_create_spr)) },
                             onClick = {
                                 showMenu = false
-                                viewModel.showImportDialog(true)
+                                onShowImportDialog(true)
                             },
                             leadingIcon = { Icon(Icons.Default.AddPhotoAlternate, null) }
                         )
@@ -97,7 +169,7 @@ fun MainScreen(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Toolbar")
+                                    Text(stringResource(R.string.menu_toolbar))
                                     Spacer(Modifier.weight(1f))
                                     if (state.showToolbar) Icon(
                                         Icons.Default.Check, null,
@@ -105,12 +177,12 @@ fun MainScreen(
                                     )
                                 }
                             },
-                            onClick = { viewModel.toggleToolbar() }
+                            onClick = { onToggleToolbar() }
                         )
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Checker grid")
+                                    Text(stringResource(R.string.menu_checker_grid))
                                     Spacer(Modifier.weight(1f))
                                     if (state.showChecker) Icon(
                                         Icons.Default.Check, null,
@@ -118,29 +190,29 @@ fun MainScreen(
                                     )
                                 }
                             },
-                            onClick = { viewModel.toggleChecker() }
+                            onClick = { onToggleChecker() }
                         )
                         Divider()
                         DropdownMenuItem(
-                            text = { Text("About") },
-                            onClick = { showMenu = false; viewModel.showAbout(true) },
+                            text = { Text(stringResource(R.string.menu_about)) },
+                            onClick = { showMenu = false; onShowAbout(true) },
                             leadingIcon = { Icon(Icons.Default.Info, null) }
                         )
                     }
                 }
 
                 Text(
-                    text = if (state.isLoaded) state.fileName else "Sprite-Tools",
+                    text = if (state.isLoaded) state.fileName else stringResource(R.string.app_name),
                     style = MaterialTheme.typography.titleSmall,
                     color = SpriteColors.TextPrimary,
                     modifier = Modifier.weight(1f)
                 )
 
                 if (state.isLoaded) {
-                    IconButton(onClick = { viewModel.toggleProperties() }) {
+                    IconButton(onClick = { onToggleProperties() }) {
                         Icon(
                             Icons.Default.Info,
-                            contentDescription = "Properties",
+                            contentDescription = stringResource(R.string.properties_title),
                             tint = if (state.showProperties) SpriteColors.Accent
                             else SpriteColors.TextDim,
                             modifier = Modifier.size(22.dp)
@@ -162,25 +234,25 @@ fun MainScreen(
             ) {
                 SpriteToolbar(
                     state = state,
-                    onFirstFrame = { viewModel.firstFrame() },
-                    onPrevFrame = { viewModel.prevFrame() },
-                    onTogglePlay = { viewModel.togglePlayback() },
-                    onNextFrame = { viewModel.nextFrame() },
-                    onLastFrame = { viewModel.lastFrame() },
-                    onSpeedChanged = { viewModel.setPlaybackSpeed(it) },
-                    onZoomIn = { viewModel.zoomIn() },
-                    onZoomOut = { viewModel.zoomOut() },
-                    onResetZoom = { viewModel.resetZoom() },
-                    onFrameChanged = { viewModel.setFrame(it) }
+                    onFirstFrame = onFirstFrame,
+                    onPrevFrame = onPrevFrame,
+                    onTogglePlay = onTogglePlay,
+                    onNextFrame = onNextFrame,
+                    onLastFrame = onLastFrame,
+                    onSpeedChanged = onSpeedChanged,
+                    onZoomIn = onZoomIn,
+                    onZoomOut = onZoomOut,
+                    onResetZoom = onResetZoom,
+                    onFrameChanged = onFrameChanged
                 )
             }
 
             SpriteViewport(
                 state = state,
                 modifier = Modifier.weight(1f),
-                onOffsetChanged = { x, y -> viewModel.setOffset(x, y) },
-                onZoomChanged = { viewModel.setZoom(it) },
-                onViewportSizeChanged = { w, h -> viewModel.onViewportSizeChanged(w, h) },
+                onOffsetChanged = onOffsetChanged,
+                onZoomChanged = onZoomChanged,
+                onViewportSizeChanged = onViewportSizeChanged,
             )
 
             StatusBar(state = state)
@@ -188,10 +260,10 @@ fun MainScreen(
 
         if (state.showProperties && state.isLoaded) {
             ModalBottomSheet(
-                onDismissRequest = { viewModel.toggleProperties() },
+                onDismissRequest = { onToggleProperties() },
                 sheetState = sheetState,
                 containerColor = SpriteColors.BgMid,
-                shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+                shape = RoundedCornerShape(12.dp, 12.dp, 0.dp, 0.dp),
                 dragHandle = {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -205,7 +277,7 @@ fun MainScreen(
                                 .background(SpriteColors.TextDim, RoundedCornerShape(2.dp))
                         )
                         Spacer(Modifier.height(4.dp))
-                        Text("Properties",
+                        Text(stringResource(R.string.properties_title),
                             color = SpriteColors.TextSection,
                             style = MaterialTheme.typography.titleSmall)
                         Spacer(Modifier.height(8.dp))
@@ -223,28 +295,22 @@ fun MainScreen(
     }
 
     if (state.showAbout) {
-        AboutDialog(onDismiss = { viewModel.showAbout(false) })
+        AboutDialog(onDismiss = { onShowAbout(false) })
     }
 
     if (state.showExportDialog && state.isLoaded) {
         ExportDialog(
             state = state,
-            onDismiss = { viewModel.showExportDialog(false) },
-            onExportAll = { dir, name, fmt ->
-                viewModel.exportAllFrames(dir, name, fmt)
-            },
-            onExportCurrent = { file, fmt ->
-                viewModel.exportCurrentFrame(file, fmt)
-            }
+            onDismiss = { onShowExportDialog(false) },
+            onExportAll = onExportAll,
+            onExportCurrent = onExportCurrent
         )
     }
 
     if (state.showImportDialog) {
         ImportDialog(
-            onDismiss = { viewModel.showImportDialog(false) },
-            onCreateSpr = { uris, file, ver, type, fmt, interval ->
-                viewModel.createSprFromUris(uris, file, ver, type, fmt, interval)
-            }
+            onDismiss = { onShowImportDialog(false) },
+            onCreateSpr = onCreateSpr
         )
     }
 
@@ -256,8 +322,49 @@ fun MainScreen(
             isDone = state.progressDone,
             isSuccess = state.progressSuccess,
             resultMessage = state.progressResult,
-            onCancel = { viewModel.cancelConvert() },
-            onDismiss = { viewModel.dismissProgress() }
+            onCancel = onCancelConvert,
+            onDismiss = onDismissProgress
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MainScreenPreview() {
+    SpriteToolsTheme {
+        MainScreenContent(
+            state = SpriteUiState(
+                isLoaded = true,
+                fileName = "sample.spr",
+                totalFrames = 1,
+                zoom = 1.0f
+            ),
+            onOpenFile = {},
+            onCloseFile = {},
+            onShowExportDialog = {},
+            onShowImportDialog = {},
+            onToggleToolbar = {},
+            onToggleChecker = {},
+            onShowAbout = {},
+            onToggleProperties = {},
+            onFirstFrame = {},
+            onPrevFrame = {},
+            onTogglePlay = {},
+            onNextFrame = {},
+            onLastFrame = {},
+            onSpeedChanged = {},
+            onZoomIn = {},
+            onZoomOut = {},
+            onResetZoom = {},
+            onFrameChanged = {},
+            onOffsetChanged = { _, _ -> },
+            onZoomChanged = {},
+            onViewportSizeChanged = { _, _ -> },
+            onExportAll = { _, _, _ -> },
+            onExportCurrent = { _, _ -> },
+            onCreateSpr = { _, _, _, _, _, _ -> },
+            onCancelConvert = {},
+            onDismissProgress = {}
         )
     }
 }

@@ -8,11 +8,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.spritetools.R
 import com.spritetools.ui.theme.SpriteColors
+import com.spritetools.ui.theme.SpriteToolsTheme
 import com.spritetools.viewmodel.SpriteUiState
 
 @Composable
@@ -43,16 +46,16 @@ fun SpriteToolbar(
                 .padding(horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TinyBtn(Icons.Default.SkipPrevious, "First", multi) { onFirstFrame() }
-            TinyBtn(Icons.Default.NavigateBefore, "Prev", multi) { onPrevFrame() }
+            TinyBtn(Icons.Default.SkipPrevious, stringResource(R.string.toolbar_desc_first), multi) { onFirstFrame() }
+            TinyBtn(Icons.Default.NavigateBefore, stringResource(R.string.toolbar_desc_prev), multi) { onPrevFrame() }
             TinyBtn(
                 icon = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                desc = "Play",
+                desc = stringResource(R.string.toolbar_desc_play),
                 enabled = multi,
                 highlighted = state.isPlaying
             ) { onTogglePlay() }
-            TinyBtn(Icons.Default.NavigateNext, "Next", multi) { onNextFrame() }
-            TinyBtn(Icons.Default.SkipNext, "Last", multi) { onLastFrame() }
+            TinyBtn(Icons.Default.NavigateNext, stringResource(R.string.toolbar_desc_next), multi) { onNextFrame() }
+            TinyBtn(Icons.Default.SkipNext, stringResource(R.string.toolbar_desc_last), multi) { onLastFrame() }
 
             if (multi) {
                 Text(
@@ -75,9 +78,9 @@ fun SpriteToolbar(
 
             Spacer(Modifier.weight(1f))
 
-            TinyBtn(Icons.Default.ZoomOut, "Zoom-") { onZoomOut() }
-            TinyBtn(Icons.Default.ZoomIn, "Zoom+") { onZoomIn() }
-            TinyBtn(Icons.Default.FilterCenterFocus, "1:1") { onResetZoom() }
+            TinyBtn(Icons.Default.ZoomOut, stringResource(R.string.toolbar_desc_zoom_out)) { onZoomOut() }
+            TinyBtn(Icons.Default.ZoomIn, stringResource(R.string.toolbar_desc_zoom_in)) { onZoomIn() }
+            TinyBtn(Icons.Default.FilterCenterFocus, stringResource(R.string.toolbar_desc_reset_zoom)) { onResetZoom() }
         }
 
         if (multi) {
@@ -138,3 +141,28 @@ private fun TinyBtn(
 }
 
 private fun Float.fmt(d: Int): String = "%.${d}f".format(this)
+
+@Preview(showBackground = true)
+@Composable
+fun SpriteToolbarPreview() {
+    SpriteToolsTheme {
+        SpriteToolbar(
+            state = SpriteUiState(
+                totalFrames = 10,
+                currentFrame = 2,
+                isPlaying = false,
+                playbackSpeed = 1.0f
+            ),
+            onFirstFrame = {},
+            onPrevFrame = {},
+            onTogglePlay = {},
+            onNextFrame = {},
+            onLastFrame = {},
+            onSpeedChanged = {},
+            onZoomIn = {},
+            onZoomOut = {},
+            onResetZoom = {},
+            onFrameChanged = {}
+        )
+    }
+}

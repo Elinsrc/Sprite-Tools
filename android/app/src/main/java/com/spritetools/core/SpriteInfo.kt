@@ -1,5 +1,8 @@
 package com.spritetools.core
 
+import android.content.Context
+import com.spritetools.R
+
 data class SpriteInfo(
     val version: Int,
     val type: Int,
@@ -11,42 +14,42 @@ data class SpriteInfo(
     val numGroups: Int,
     val paletteColors: Int
 ) {
-    val versionName: String get() = when (version) {
-        1 -> "Quake"
-        2 -> "Half-Life"
-        else -> "Unknown"
+    fun getVersionName(context: Context): String = when (version) {
+        1 -> context.getString(R.string.version_quake)
+        2 -> context.getString(R.string.version_hl)
+        else -> context.getString(R.string.unknown)
     }
 
-    val typeName: String get() = when (type) {
-        0 -> "Parallel Upright"
-        1 -> "Facing Upright"
-        2 -> "Parallel"
-        3 -> "Oriented"
-        4 -> "Parallel Oriented"
-        else -> "Unknown"
+    fun getTypeName(context: Context): String = when (type) {
+        0 -> context.getString(R.string.type_parallel_upright)
+        1 -> context.getString(R.string.type_facing_upright)
+        2 -> context.getString(R.string.type_parallel)
+        3 -> context.getString(R.string.type_oriented)
+        4 -> context.getString(R.string.type_parallel_oriented)
+        else -> context.getString(R.string.unknown)
     }
 
-    val texFormatName: String get() = when (texFormat) {
-        0 -> "Normal"
-        1 -> "Additive"
-        2 -> "Index Alpha"
-        3 -> "Alpha Test"
-        else -> "Unknown"
+    fun getTexFormatName(context: Context): String = when (texFormat) {
+        0 -> context.getString(R.string.tex_normal)
+        1 -> context.getString(R.string.tex_additive)
+        2 -> context.getString(R.string.tex_index_alpha)
+        3 -> context.getString(R.string.tex_alpha_test)
+        else -> context.getString(R.string.unknown)
     }
 
-    val faceTypeName: String get() = when (facetype) {
-        0 -> "Cull Front"
-        1 -> "No Cull"
-        else -> "Unknown"
+    fun getFaceTypeName(context: Context): String = when (facetype) {
+        0 -> context.getString(R.string.cull_front)
+        1 -> context.getString(R.string.no_cull)
+        else -> context.getString(R.string.unknown)
     }
 
     companion object {
         fun fromArray(arr: IntArray): SpriteInfo? {
             if (arr.size < 9) return null
-                return SpriteInfo(
-                    arr[0], arr[1], arr[2], arr[3],
-                    arr[4], arr[5], arr[6], arr[7], arr[8]
-                )
+            return SpriteInfo(
+                arr[0], arr[1], arr[2], arr[3],
+                arr[4], arr[5], arr[6], arr[7], arr[8]
+            )
         }
     }
 }

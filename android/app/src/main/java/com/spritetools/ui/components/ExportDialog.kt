@@ -8,11 +8,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.spritetools.R
 import com.spritetools.core.ImageExportFormat
 import com.spritetools.ui.theme.SpriteColors
+import com.spritetools.ui.theme.SpriteToolsTheme
 import com.spritetools.viewmodel.SpriteUiState
 import java.io.File
 
@@ -27,6 +33,7 @@ fun ExportDialog(
     var exportAll by remember { mutableStateOf(true) }
 
     val formats = ImageExportFormat.entries.toList()
+    val context = LocalContext.current
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -40,10 +47,10 @@ fun ExportDialog(
                     .width(360.dp)
                     .padding(16.dp)
             ) {
-                Text("Export Frames", fontSize = 14.sp, color = SpriteColors.TextPrimary)
+                Text(stringResource(R.string.export_title), fontSize = 14.sp, color = SpriteColors.TextPrimary)
                 Spacer(Modifier.height(8.dp))
 
-                SectionHeader("Format")
+                SectionHeader(stringResource(R.string.export_section_format))
 
                 formats.forEachIndexed { index, fmt ->
                     Row(
@@ -63,14 +70,14 @@ fun ExportDialog(
                             modifier = Modifier.scale(0.8f)
                         )
                         Text(
-                            fmt.label,
+                            fmt.getLabel(context),
                             fontSize = 13.sp,
                             color = SpriteColors.TextPrimary
                         )
                     }
                 }
 
-                SectionHeader("Selection")
+                SectionHeader(stringResource(R.string.export_section_selection))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -85,7 +92,7 @@ fun ExportDialog(
                         ),
                         modifier = Modifier.scale(0.8f)
                     )
-                    Text("All frames (${state.totalFrames})", fontSize = 13.sp, color = SpriteColors.TextPrimary)
+                    Text(stringResource(R.string.export_all_frames, state.totalFrames), fontSize = 13.sp, color = SpriteColors.TextPrimary)
                 }
 
                 Row(
@@ -101,13 +108,14 @@ fun ExportDialog(
                         ),
                         modifier = Modifier.scale(0.8f)
                     )
-                    Text("Current frame (${state.currentFrame + 1})", fontSize = 13.sp, color = SpriteColors.TextPrimary)
+                    Text(stringResource(R.string.export_current_frame, state.currentFrame + 1), fontSize = 13.sp, color = SpriteColors.TextPrimary)
                 }
 
                 Spacer(Modifier.height(16.dp))
                 Divider(color = SpriteColors.Border)
                 Spacer(Modifier.height(12.dp))
 
+                val exportDefaultName = stringResource(R.string.export_default_name)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
@@ -119,7 +127,7 @@ fun ExportDialog(
                                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
                                 "SpriteTools"
                             )
-                            val baseName = state.fileName.substringBeforeLast(".").ifEmpty { "sprite" }
+                            val baseName = state.fileName.substringBeforeLast(".").ifEmpty { exportDefaultName }
 
                             if (exportAll) {
                                 onExportAll(exportDir, baseName, fmt)
@@ -137,7 +145,7 @@ fun ExportDialog(
                         modifier = Modifier.width(100.dp).height(32.dp),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text("Export", fontSize = 13.sp)
+                        Text(stringResource(R.string.btn_export), fontSize = 13.sp)
                     }
 
                     Spacer(Modifier.width(8.dp))
@@ -152,7 +160,7 @@ fun ExportDialog(
                         modifier = Modifier.width(100.dp).height(32.dp),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text("Cancel", fontSize = 13.sp)
+                        Text(stringResource(R.string.btn_cancel), fontSize = 13.sp)
                     }
                 }
             }
@@ -179,3 +187,21 @@ private fun SectionHeader(title: String) {
 fun Modifier.scale(scale: Float): Modifier = this.then(
     Modifier.size(48.dp * scale)
 )
+
+@Preview(showBackground = true)
+@Composable
+fun ExportDialogPreview() {
+    SpriteToolsTheme {
+        ExportDialog(
+            state = SpriteUiState(
+                isLoaded = true,
+                fileName = "sample_sprite.spr",
+                totalFrames = 12,
+                currentFrame = 4
+            ),
+            onDismiss = {},
+            onExportAll = { _, _, _ -> },
+            onExportCurrent = { _, _ -> }
+        )
+    }
+}

@@ -4,27 +4,34 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import com.spritetools.R
 import java.io.ByteArrayOutputStream
 import java.io.File
 
-enum class ImageExportFormat(val code: Int, val ext: String, val label: String) {
-    PNG(0, ".png", "PNG (with alpha)"),
-    BMP(1, ".bmp", "BMP (no alpha)")
+enum class ImageExportFormat(val code: Int, val ext: String, val labelResId: Int) {
+    PNG(0, ".png", R.string.fmt_png),
+    BMP(1, ".bmp", R.string.fmt_bmp);
+
+    fun getLabel(context: Context): String = context.getString(labelResId)
 }
 
-enum class SprType(val code: Int, val label: String) {
-    PARALLEL_UPRIGHT(0, "Parallel Upright"),
-    FACING_UPRIGHT(1, "Facing Upright"),
-    PARALLEL(2, "Parallel"),
-    ORIENTED(3, "Oriented"),
-    PARALLEL_ORIENTED(4, "Parallel Oriented")
+enum class SprType(val code: Int, val labelResId: Int) {
+    PARALLEL_UPRIGHT(0, R.string.type_parallel_upright),
+    FACING_UPRIGHT(1, R.string.type_facing_upright),
+    PARALLEL(2, R.string.type_parallel),
+    ORIENTED(3, R.string.type_oriented),
+    PARALLEL_ORIENTED(4, R.string.type_parallel_oriented);
+
+    fun getLabel(context: Context): String = context.getString(labelResId)
 }
 
-enum class SprTexFormat(val code: Int, val label: String) {
-    NORMAL(0, "Normal"),
-    ADDITIVE(1, "Additive"),
-    INDEX_ALPHA(2, "Index Alpha"),
-    ALPHA_TEST(3, "Alpha Test")
+enum class SprTexFormat(val code: Int, val labelResId: Int) {
+    NORMAL(0, R.string.tex_normal),
+    ADDITIVE(1, R.string.tex_additive),
+    INDEX_ALPHA(2, R.string.tex_index_alpha),
+    ALPHA_TEST(3, R.string.tex_alpha_test);
+
+    fun getLabel(context: Context): String = context.getString(labelResId)
 }
 
 data class ConvertResult(

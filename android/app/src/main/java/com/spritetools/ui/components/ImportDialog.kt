@@ -29,9 +29,13 @@ import com.spritetools.core.SprTexFormat
 import com.spritetools.core.SprType
 import com.spritetools.ui.theme.SpriteColors
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.spritetools.R
+import com.spritetools.ui.theme.SpriteToolsTheme
 import java.io.File
 
-private fun getFileName(context: Context, uri: Uri): String {
+private fun getFileName(context: Context, uri: Uri, unknown: String): String {
     if (uri.scheme == "content") {
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -47,7 +51,7 @@ private fun getFileName(context: Context, uri: Uri): String {
         if (cleaned.isNotEmpty()) return cleaned
     }
 
-    return "unknown"
+    return unknown
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +61,7 @@ fun ImportDialog(
     onCreateSpr: (List<Uri>, File, Int, SprType, SprTexFormat, Float) -> Unit
 ) {
     val context = LocalContext.current
+    val unknownStr = stringResource(R.string.import_unknown_file)
 
     var selectedImages by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var version by remember { mutableStateOf(2) }
@@ -74,7 +79,7 @@ fun ImportDialog(
             selectedImages = selectedImages + uris
             uris.forEach { uri ->
                 if (uri !in fileNames) {
-                    fileNames[uri] = getFileName(context, uri)
+                    fileNames[uri] = getFileName(context, uri, unknownStr)
                 }
             }
         }
@@ -93,16 +98,16 @@ fun ImportDialog(
                     .padding(16.dp)
                     .heightIn(max = 600.dp)
             ) {
-                Text("Create SPR", fontSize = 14.sp, color = SpriteColors.TextPrimary)
+                Text(stringResource(R.string.create_spr_title), fontSize = 14.sp, color = SpriteColors.TextPrimary)
                 Spacer(Modifier.height(8.dp))
 
-                SectionHeader("Input Images")
+                SectionHeader(stringResource(R.string.create_section_input))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Button("Add Images...") { imagePicker.launch(arrayOf("image/*")) }
+                    Button(stringResource(R.string.btn_add_images)) { imagePicker.launch(arrayOf("image/*")) }
                     Spacer(Modifier.width(8.dp))
                     if (selectedImages.isNotEmpty()) {
-                        Button("Clear") {
+                        Button(stringResource(R.string.btn_clear)) {
                             selectedImages = emptyList()
                             fileNames.clear()
                         }
@@ -110,7 +115,7 @@ fun ImportDialog(
                 }
 
                 Spacer(Modifier.height(4.dp))
-                Text("${selectedImages.size} image(s)", fontSize = 12.sp, color = SpriteColors.TextDim)
+                Text(stringResource(R.string.create_num_images, selectedImages.size), fontSize = 12.sp, color = SpriteColors.TextDim)
 
                 if (selectedImages.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
@@ -139,7 +144,7 @@ fun ImportDialog(
                                     Spacer(Modifier.width(8.dp))
                                     Icon(
                                         Icons.Default.Close,
-                                        contentDescription = "Remove",
+                                        contentDescription = null,
                                         tint = SpriteColors.TextDim,
                                         modifier = Modifier
                                             .size(16.dp)
@@ -157,44 +162,44 @@ fun ImportDialog(
                     }
                 }
 
-                SectionHeader("Sprite Settings")
+                SectionHeader(stringResource(R.string.create_section_settings))
 
                 TextField(
                     value = outputName,
                     onValueChange = { outputName = it },
-                    label = "Name"
+                    label = stringResource(R.string.create_label_name)
                 )
 
                 Row(
                     modifier = Modifier.padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Version", fontSize = 12.sp, color = SpriteColors.TextDim, modifier = Modifier.width(70.dp))
-                    RadioButton(selected = version == 1, onClick = { version = 1 }, label = "Q1")
+                    Text(stringResource(R.string.create_label_version), fontSize = 12.sp, color = SpriteColors.TextDim, modifier = Modifier.width(70.dp))
+                    RadioButton(selected = version == 1, onClick = { version = 1 }, label = stringResource(R.string.version_quake))
                     Spacer(Modifier.width(8.dp))
-                    RadioButton(selected = version == 2, onClick = { version = 2 }, label = "HL")
+                    RadioButton(selected = version == 2, onClick = { version = 2 }, label = stringResource(R.string.version_hl))
                 }
 
                 Dropdown(
-                    label = "Type",
-                    selected = SprType.entries[selectedType].label,
-                    items = SprType.entries.map { it.label },
+                    label = stringResource(R.string.create_label_type),
+                    selected = SprType.entries[selectedType].getLabel(context),
+                    items = SprType.entries.map { it.getLabel(context) },
                     onSelect = { selectedType = it }
                 )
 
                 if (version == 2) {
                     Dropdown(
-                        label = "Render",
-                        selected = SprTexFormat.entries[selectedTexFmt].label,
-                        items = SprTexFormat.entries.map { it.label },
+                        label = stringResource(R.string.create_label_render),
+                        selected = SprTexFormat.entries[selectedTexFmt].getLabel(context),
+                        items = SprTexFormat.entries.map { it.getLabel(context) },
                         onSelect = { selectedTexFmt = it }
                     )
                 }
 
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Interval", fontSize = 12.sp, color = SpriteColors.TextDim, modifier = Modifier.width(70.dp))
-                    Text("%.3f s".format(interval), fontSize = 12.sp, color = SpriteColors.TextPrimary)
+                    Text(stringResource(R.string.create_label_interval), fontSize = 12.sp, color = SpriteColors.TextDim, modifier = Modifier.width(70.dp))
+                    Text(stringResource(R.string.prop_interval_val_short, interval), fontSize = 12.sp, color = SpriteColors.TextPrimary)
                 }
                 Slider(
                     value = interval,
@@ -217,7 +222,7 @@ fun ImportDialog(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Button(
-                        text = "Create",
+                        text = stringResource(R.string.btn_create),
                         enabled = selectedImages.isNotEmpty(),
                         width = 100.dp,
                         onClick = {
@@ -236,7 +241,7 @@ fun ImportDialog(
                         }
                     )
                     Spacer(Modifier.width(8.dp))
-                    Button(text = "Cancel", width = 100.dp, onClick = onDismiss)
+                    Button(text = stringResource(R.string.btn_cancel), width = 100.dp, onClick = onDismiss)
                 }
             }
         }
@@ -347,5 +352,16 @@ private fun Dropdown(label: String, selected: String, items: List<String>, onSel
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ImportDialogPreview() {
+    SpriteToolsTheme {
+        ImportDialog(
+            onDismiss = {},
+            onCreateSpr = { _, _, _, _, _, _ -> }
+        )
     }
 }

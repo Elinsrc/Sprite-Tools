@@ -11,9 +11,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spritetools.ui.theme.SpriteColors
+import com.spritetools.ui.theme.SpriteToolsTheme
 
 @Composable
 fun PaletteGrid(
@@ -80,5 +82,19 @@ fun PaletteGrid(
                  color = SpriteColors.TextDim
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PaletteGridPreview() {
+    val sampleColors = listOf(
+        0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF0000.toInt(), 0xFF00FF00.toInt(),
+        0xFF0000FF.toInt(), 0xFFFFFF00.toInt(), 0xFFFF00FF.toInt(), 0xFF00FFFF.toInt(),
+        0xFF808080.toInt(), 0xFFC0C0C0.toInt(), 0xFF800000.toInt(), 0xFF808000.toInt(),
+        0xFF008000.toInt(), 0xFF800080.toInt(), 0xFF008080.toInt(), 0xFF000080.toInt()
+    )
+    SpriteToolsTheme {
+        PaletteGrid(colors = sampleColors)
     }
 }
