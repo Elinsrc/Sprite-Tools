@@ -66,7 +66,6 @@ Java_com_spritetools_core_SpriteNative_nativeFree(JNIEnv*, jclass, jlong handle)
 {
     if (handle != 0) 
     {
-
         LOGI("Freeing handle %p", reinterpret_cast<void*>(handle));
         sprite_free(reinterpret_cast<SpriteHandle>(handle));
     }
@@ -76,7 +75,7 @@ JNIEXPORT jintArray JNICALL
 Java_com_spritetools_core_SpriteNative_nativeGetInfo(JNIEnv* env, jclass, jlong handle)
 {
     if (handle == 0)
-     {
+    {
         LOGE("nativeGetInfo: null handle");
         return nullptr;
     }
@@ -94,19 +93,18 @@ Java_com_spritetools_core_SpriteNative_nativeGetInfo(JNIEnv* env, jclass, jlong 
 
     jint vals[9] = 
     {
-        info.version, 
+        (jint)info.version,
         (jint)info.type, 
         (jint)info.texFormat, 
         (jint)info.facetype,
-        info.bounds[0], 
-        info.bounds[1],
-        info.numframes, 
-        info.num_groups, 
-        info.palette_colors
+        (jint)info.bounds[0],
+        (jint)info.bounds[1],
+        (jint)info.numframes,
+        (jint)info.num_groups,
+        (jint)info.palette_colors
     };
     env->SetIntArrayRegion(arr, 0, 9, vals);
 
-    LOGI("Info: v%d, %d frames, %d groups", info.version, info.numframes, info.num_groups);
     return arr;
 }
 
@@ -145,36 +143,30 @@ Java_com_spritetools_core_SpriteNative_nativeGetFrameARGB(JNIEnv* env, jclass, j
 
     FrameInfo info;
     if (sprite_get_frame_info(reinterpret_cast<SpriteHandle>(handle), frameIndex, &info) != 0) 
-    {
-        LOGE("nativeGetFrameARGB: frame info failed for index %d", frameIndex);
         return nullptr;
-    }
 
     size_t count = (size_t)info.width * info.height;
     if (count == 0) return nullptr;
 
     std::vector<uint8_t> rgba(count * 4);
     if (sprite_get_frame_rgba(reinterpret_cast<SpriteHandle>(handle), frameIndex, rgba.data()) != 0)
-    {
-        LOGE("nativeGetFrameARGB: get rgba failed for index %d", frameIndex);
-        return nullptr;
-    }
-
-    jintArray arr = env->NewIntArray(count);
-    if (!arr) 
         return nullptr;
 
-    std::vector<jint> argb(count);
-    for (size_t i = 0; i < count; i++) 
-    {
-        int r = rgba[i * 4 + 0];
-        int g = rgba[i * 4 + 1];
-        int b = rgba[i * 4 + 2];
-        int a = rgba[i * 4 + 3];
-        argb[i] = (a << 24) | (r << 16) | (g << 8) | b;
+    jintArray arr = env->NewIntArray((jsize)count);
+    if (!arr) return nullptr;
+
+    jint* dest = (jint*)env->GetPrimitiveArrayCritical(arr, nullptr);
+    if (dest) {
+        for (size_t i = 0; i < count; i++) {
+            uint32_t r = rgba[i * 4 + 0];
+            uint32_t g = rgba[i * 4 + 1];
+            uint32_t b = rgba[i * 4 + 2];
+            uint32_t a = rgba[i * 4 + 3];
+            dest[i] = (a << 24) | (r << 16) | (g << 8) | b;
+        }
+        env->ReleasePrimitiveArrayCritical(arr, dest, 0);
     }
 
-    env->SetIntArrayRegion(arr, 0, count, argb.data());
     return arr;
 }
 
@@ -211,7 +203,7 @@ Java_com_spritetools_core_SpriteNative_nativeGetGroupInfo(JNIEnv* env, jclass, j
     if (!arr) 
         return nullptr;
 
-    jint vals[2] = { info.type, info.num_frames };
+    jint vals[2] = { (jint)info.type, (jint)info.num_frames };
     env->SetIntArrayRegion(arr, 0, 2, vals);
     return arr;
 }
@@ -267,10 +259,9 @@ Java_com_spritetools_core_SpriteNative_nativeExportFrameToImage(JNIEnv* env, jcl
         return nullptr;
 
     jbyteArray arr = env->NewByteArray((jsize)img_data.size());
-    if (!arr) 
-        return nullptr;
+    if (arr)
+        env->SetByteArrayRegion(arr, 0, (jsize)img_data.size(), reinterpret_cast<const jbyte*>(img_data.data()));
 
-    env->SetByteArrayRegion(arr, 0, (jsize)img_data.size(), reinterpret_cast<const jbyte*>(img_data.data()));
     return arr;
 }
 
@@ -284,6 +275,11 @@ Java_com_spritetools_core_SpriteNative_nativeCreateSprFromImages(JNIEnv* env, jc
     if (count <= 0) 
         return nullptr;
 
+    if (env->EnsureLocalCapacity(count + 16) < 0) {
+        LOGE("nativeCreateSprFromImages: failed to ensure local capacity for %d elements", count);
+        return nullptr;
+    }
+
     struct E { jbyteArray arr; jbyte* bytes; jsize len; };
     std::vector<E> entries(count);
     std::vector<const uint8_t*> ptrs;
@@ -294,6 +290,7 @@ Java_com_spritetools_core_SpriteNative_nativeCreateSprFromImages(JNIEnv* env, jc
         auto a = (jbyteArray)env->GetObjectArrayElement(imageDataArray, i);
         if (!a)
         {
+            LOGE("nativeCreateSprFromImages: element %d is null", i);
             for (int j = 0; j < i; j++)
                 env->ReleaseByteArrayElements(entries[j].arr, entries[j].bytes, JNI_ABORT);
             return nullptr;
@@ -310,10 +307,12 @@ Java_com_spritetools_core_SpriteNative_nativeCreateSprFromImages(JNIEnv* env, jc
     uint8_t* out_data = nullptr;
     size_t out_size = 0;
 
-    int result = sprite_create_from_buffers( ptrs.data(), sizes.data(), count, version, type, texFormat, interval, &out_data, &out_size);
+    int result = sprite_create_from_buffers(ptrs.data(), sizes.data(), count, version, type, texFormat, interval, &out_data, &out_size);
 
-    for (int i = 0; i < count; i++)
+    for (int i = 0; i < count; i++) {
         env->ReleaseByteArrayElements(entries[i].arr, entries[i].bytes, JNI_ABORT);
+        env->DeleteLocalRef(entries[i].arr); // Clean up local refs manually just in case
+    }
 
     if (result != 0 || !out_data)
     {
@@ -332,6 +331,7 @@ Java_com_spritetools_core_SpriteNative_nativeCreateSprFromImages(JNIEnv* env, jc
 JNIEXPORT jstring JNICALL
 Java_com_spritetools_core_SpriteNative_nativeGetLastError(JNIEnv* env, jclass)
 {
-    return env->NewStringUTF(sprite_converter_last_error());
+    const char* err = sprite_converter_last_error();
+    return env->NewStringUTF(err ? err : "");
 }
 }
