@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QStyleFactory>
 #include "mainwindow.h"
 #include "theme.h"
 
@@ -6,6 +7,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     QCoreApplication::addLibraryPath(QCoreApplication::applicationDirPath());
+    app.setStyle(QStyleFactory::create("Fusion"));
     app.setApplicationName("Sprite-Tools");
     app.setPalette(Theme::darkPalette());
     app.setStyleSheet(Theme::globalStyleSheet());
