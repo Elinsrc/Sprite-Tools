@@ -1,6 +1,5 @@
 #include "import_dialog.h"
 #include "sprite_converter.h"
-
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -13,6 +12,8 @@
 #include <QFrame>
 #include <QSlider>
 #include <QSettings>
+#include <QRadioButton>
+#include <QLineEdit>
 #include <fstream>
 #include <stb_image.h>
 
@@ -73,30 +74,19 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
         lay->addSpacing(8);
     };
 
-    auto* nameEd = new QLineEdit("output");
-    nameEd->setStyleSheet(QString(
-        "QLineEdit { background: %1; color: %2; border: 1px solid %3; border-radius: 4px; padding: 4px; }"
-        "QLineEdit:focus { border: 1px solid %4; }"
-    ).arg(SpriteColors::BgLight.name(), SpriteColors::TextPrimary.name(), 
-          SpriteColors::Border.name(), SpriteColors::Accent.name()));
-    addRow("Name:", nameEd);
-
     auto* verW = new QWidget;
     auto* verL = new QHBoxLayout(verW);
     verL->setContentsMargins(0,0,0,0);
     auto* v1 = new QRadioButton("Quake (v1)");
     auto* v2 = new QRadioButton("Half-Life (v2)");
-    v2->setChecked(true);
     verL->addWidget(v1);
     verL->addWidget(v2);
     verL->addStretch();
     
     m_versionCombo = new QComboBox;
-    m_versionCombo->addItem("", 1); m_versionCombo->addItem("", 2);
+    m_versionCombo->addItem("v1", 1); 
+    m_versionCombo->addItem("v2", 2);
     m_versionCombo->setVisible(false);
-
-    connect(v1, &QRadioButton::toggled, [this](bool c) { if(c) m_versionCombo->setCurrentIndex(0); });
-    connect(v2, &QRadioButton::toggled, [this](bool c) { if(c) m_versionCombo->setCurrentIndex(1); });
 
     addRow("Version:", verW);
 
@@ -114,27 +104,43 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
     intL->setContentsMargins(0,0,0,0);   
     
     m_intervalSpin = new QDoubleSpinBox;
-    m_intervalSpin->setRange(0.01, 1.0); m_intervalSpin->setValue(0.1);
+    m_intervalSpin->setRange(0.01, 1.0);
     m_intervalSpin->setVisible(false);
 
     auto* intSl = new QSlider(Qt::Horizontal);
-    intSl->setRange(1, 100); intSl->setValue(10);
+    intSl->setRange(1, 100);
     intSl->setFixedHeight(40);
     auto* intLbl = new QLabel("0.10s");
     intLbl->setFixedWidth(40);
     intLbl->setStyleSheet(QString("color: %1;").arg(SpriteColors::TextPrimary.name()));
 
-    connect(intSl, &QSlider::valueChanged, [=](int v) {
-        float val = v / 100.0f;
-        m_intervalSpin->setValue(val);
-        intLbl->setText(QString::number(val, 'f', 2) + "s");
-    });
-
     intL->addWidget(intSl);
     intL->addWidget(intLbl);
     addRow("Interval:", intW);
 
-    connect(m_versionCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) { m_renderCombo->setEnabled(m_versionCombo->currentData().toInt() == 2); });
+    connect(v1, &QRadioButton::toggled, [this](bool c) {
+        if(c) {
+            m_versionCombo->setCurrentIndex(0);
+            m_renderCombo->setCurrentIndex(0);
+            m_renderCombo->setEnabled(false);
+        }
+    });
+    connect(v2, &QRadioButton::toggled, [this](bool c) {
+        if(c) {
+            m_versionCombo->setCurrentIndex(1);
+            m_renderCombo->setEnabled(true);
+        }
+    });
+
+    connect(intSl, &QSlider::valueChanged, [this, intLbl](int v) {
+        float val = v / 100.0f;
+        m_intervalSpin->setValue((double)val);
+        intLbl->setText(QString::number(val, 'f', 2) + "s");
+    });
+
+    v2->setChecked(true);
+    intSl->setValue(10);
+    m_intervalSpin->setValue(0.1);
 
     lay->addStretch();
 
@@ -162,10 +168,7 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
 
     connect(addBtn, &QPushButton::clicked, this, &ImportDialog::onAddImages);
     connect(clrBtn, &QPushButton::clicked, this, &ImportDialog::onClearAll);
-    connect(createBtn, &QPushButton::clicked, [=]() {
-        m_outputFile = nameEd->text(); 
-        this->onCreate(); 
-    });
+    connect(createBtn, &QPushButton::clicked, this, &ImportDialog::onCreate);
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
 }
 
@@ -173,24 +176,22 @@ void ImportDialog::onAddImages()
 {
     QSettings settings("Sprite-Tools");
     QString lastDir = settings.value("lastImportDir", QString::fromStdString(m_state.last_dir)).toString();
-
     QStringList files = QFileDialog::getOpenFileNames(this, "Select Images", lastDir, "Images (*.png *.bmp);;All (*)");
 
     if (files.isEmpty()) 
         return;
 
     QString newDir = QFileInfo(files.first()).absolutePath();
-        
+
     m_state.last_dir = newDir.toStdString();
-        
+    
     settings.setValue("lastImportDir", newDir);
 
     for (const auto& f : files)
     {
         m_files.append(f);
-            
         auto* item = new QListWidgetItem(m_fileList);
-        auto* w = new FileListItem(QFileInfo(f).fileName(), [this, item, f]() {
+        auto* w = new FileListItem(QFileInfo(f).fileName(), [this, item]() {
             int row = m_fileList->row(item);
             m_files.removeAt(row);
             delete m_fileList->takeItem(row);
@@ -229,10 +230,12 @@ void ImportDialog::onCreate()
     if (savePath.isEmpty()) return;
     if (!savePath.endsWith(".spr", Qt::CaseInsensitive)) savePath += ".spr";
 
-    int version = m_versionCombo->currentData().toInt();
+    int version = m_versionCombo->itemData(m_versionCombo->currentIndex()).toInt();
     int type = m_typeCombo->currentIndex();
     int texFmt = m_renderCombo->currentIndex();
     float interval = (float)m_intervalSpin->value();
+
+    if (version == 1) texFmt = 0;
 
     QProgressDialog prog("Creating sprite...", "Cancel", 0, 100, this);
     prog.setWindowTitle("Creating Sprite");
@@ -258,10 +261,10 @@ void ImportDialog::onCreate()
             QMessageBox::critical(this, "Error", "Failed to load: " + QFileInfo(m_files[i]).fileName());
             return;
         }
-        std::vector<uint8_t> rgba(px, px + (size_t)w * h * 4);
+        storage.emplace_back(px, px + (size_t)w * h * 4);
         stbi_image_free(px);
-        widths.push_back(w); heights.push_back(h);
-        storage.push_back(std::move(rgba));
+        widths.push_back(w); 
+        heights.push_back(h);
     }
 
     for (auto& v : storage) ptrs.push_back(v.data());
@@ -271,8 +274,10 @@ void ImportDialog::onCreate()
     QApplication::processEvents();
 
     ImageToSprParams p;
-    p.version = version; p.type = (uint32_t)type;
-    p.tex_format = (uint32_t)texFmt; p.interval = interval;
+    p.version = version; 
+    p.type = (uint32_t)type;
+    p.tex_format = (uint32_t)texFmt; 
+    p.interval = interval;
 
     auto result = SpriteConverter::RGBAToSprMemory(ptrs, widths, heights, p);
     if (!result.success)
