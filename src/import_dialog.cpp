@@ -63,15 +63,18 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
     lay->addWidget(setLbl);
     lay->addSpacing(12);
 
-    auto addRow = [&](const QString& label, QWidget* w) {
-        auto* r = new QHBoxLayout;
+    auto addRow = [&](const QString& label, QWidget* w) -> QWidget* {
+        auto* container = new QWidget;
+        auto* r = new QHBoxLayout(container);
+        r->setContentsMargins(0, 0, 0, 0);
         auto* l = new QLabel(label);
         l->setFixedWidth(80);
         l->setStyleSheet(QString("color: %1;").arg(SpriteColors::TextDim.name()));
         r->addWidget(l);
         r->addWidget(w);
-        lay->addLayout(r);
+        lay->addWidget(container);
         lay->addSpacing(8);
+        return container;
     };
 
     auto* verW = new QWidget;
@@ -82,7 +85,7 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
     verL->addWidget(v1);
     verL->addWidget(v2);
     verL->addStretch();
-    
+
     m_versionCombo = new QComboBox;
     m_versionCombo->addItem("v1", 1); 
     m_versionCombo->addItem("v2", 2);
@@ -97,7 +100,7 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
 
     m_renderCombo = new QComboBox;
     m_renderCombo->addItems({"Normal", "Additive", "Index Alpha", "Alpha Test"});
-    addRow("Render:", m_renderCombo);
+    QWidget* renderRowWidget = addRow("Render:", m_renderCombo);
 
     auto* intW = new QWidget;
     auto* intL = new QHBoxLayout(intW);
@@ -110,32 +113,33 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
     auto* intSl = new QSlider(Qt::Horizontal);
     intSl->setRange(1, 100);
     intSl->setFixedHeight(40);
-    auto* intLbl = new QLabel("0.10s");
-    intLbl->setFixedWidth(40);
-    intLbl->setStyleSheet(QString("color: %1;").arg(SpriteColors::TextPrimary.name()));
+    auto* intValLbl = new QLabel("0.10s");
+    intValLbl->setFixedWidth(40);
+    intValLbl->setStyleSheet(QString("color: %1;").arg(SpriteColors::TextPrimary.name()));
 
     intL->addWidget(intSl);
-    intL->addWidget(intLbl);
+    intL->addWidget(intValLbl);
     addRow("Interval:", intW);
 
-    connect(v1, &QRadioButton::toggled, [this](bool c) {
-        if(c) {
+    connect(v1, &QRadioButton::toggled, [this, renderRowWidget](bool checked) {
+        if(checked) {
             m_versionCombo->setCurrentIndex(0);
             m_renderCombo->setCurrentIndex(0);
-            m_renderCombo->setEnabled(false);
-        }
-    });
-    connect(v2, &QRadioButton::toggled, [this](bool c) {
-        if(c) {
-            m_versionCombo->setCurrentIndex(1);
-            m_renderCombo->setEnabled(true);
+            renderRowWidget->setVisible(false);
         }
     });
 
-    connect(intSl, &QSlider::valueChanged, [this, intLbl](int v) {
+    connect(v2, &QRadioButton::toggled, [this, renderRowWidget](bool checked) {
+        if(checked) {
+            m_versionCombo->setCurrentIndex(1);
+            renderRowWidget->setVisible(true);
+        }
+    });
+
+    connect(intSl, &QSlider::valueChanged, [this, intValLbl](int v) {
         float val = v / 100.0f;
         m_intervalSpin->setValue((double)val);
-        intLbl->setText(QString::number(val, 'f', 2) + "s");
+        intValLbl->setText(QString::number(val, 'f', 2) + "s");
     });
 
     v2->setChecked(true);
