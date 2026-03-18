@@ -24,3 +24,6 @@ CMakeSettings.json
 CMakeFiles
 CMakeCache.txt
 Makefile
+external/6.10.0
+dist/
+aqtinstall.log
