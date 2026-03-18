@@ -51,37 +51,36 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install development tools
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            cmake \
-            libgl1-mesa-dev \
-            libglfw3-dev \
-            libx11-dev \
-            libxrandr-dev \
-            libxinerama-dev \
-            libxcursor-dev \
-            libxi-dev \
-            libwayland-dev \
-            libxkbcommon-dev
+          sudo apt-get install -y build-essential cmake python3-pip libgl1-mesa-dev
+          pip install aqtinstall
+      
+      - name: Install Qt 6.10.0
+        run: python3 -m aqt install-qt linux desktop 6.10.0 linux_gcc_64 --outputdir external
 
-      - name: Build on Linux
+      - name: Build and Install
         run: |
             cmake -B build -DCMAKE_BUILD_TYPE=Release
             cmake --build build --config Release
+            cmake --install build --prefix "${{ github.workspace }}/dist" --config Release
 
       - name: Extract branch name
         shell: bash
         id: extract_branch
         run: echo "branch=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '_')" >> $GITHUB_OUTPUT
 
+      - name: Prepare artifact structure
+        run: |
+          mkdir -p release/Sprite-Tools
+          cp -r dist/* release/Sprite-Tools/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Sprite-Tools-${{ steps.extract_branch.outputs.branch }}-linux
-          path: build/SpriteTools
+          path: release
 
   windows:
     name: Windows
@@ -91,27 +90,34 @@ jobs:
         uses: actions/checkout@v5
         with:
           submodules: recursive
+      
+      - name: Install aqtinstall
+        run: pip install aqtinstall
 
-      - name: Set developer command prompt
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
+      - name: Install Qt 6.10.0
+        run: python -m aqt install-qt windows desktop 6.10.0 win64_msvc2022_64 --outputdir external
 
-      - name: Build on Windows
+      - name: Build and Install
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release
+          cmake --install build --prefix "${{ github.workspace }}/dist" --config Release
 
       - name: Extract branch name
         shell: bash
         id: extract_branch
         run: echo "branch=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '_')" >> $GITHUB_OUTPUT
 
+      - name: Prepare artifact structure
+        run: |
+          mkdir -p release/Sprite-Tools
+          cp -r dist/* release/Sprite-Tools/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Sprite-Tools-${{ steps.extract_branch.outputs.branch }}-windows
-          path: build/Release/SpriteTools.exe
+          path: release
 
   release:
     name: Upload release
@@ -129,7 +135,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: true
   
       - name: Set tag name
         run: |
@@ -141,6 +146,16 @@ jobs:
           RELEASE_NAME="Sprite-Tools $TAG_NAME Build"
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
           echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+
+      - name: Pack Archives
+        run: |
+          mkdir final_assets
+          cd artifacts
+          for dir in */; do
+            zip_name="${dir%/}.zip"
+            echo "Creating $zip_name..."
+            cd "$dir" && zip -r "../../final_assets/$zip_name" . && cd ..
+          done
   
       - name: Remove old release if exists
         run: |
@@ -150,17 +165,12 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
-      - name: List downloaded artifacts
-        run: |
-          echo "Listing all artifacts in artifacts/:"
-          ls -R artifacts/
           
       - name: Upload new release
         run: |
           gh release create "$TAG_NAME" \
             --title "$RELEASE_NAME" \
-            --prerelease artifacts/* \
+            --prerelease final_assets/* \
             --repo ${{ github.repository }} \
             --target ${{ github.sha }}
         env:

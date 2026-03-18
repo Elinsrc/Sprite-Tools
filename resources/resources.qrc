@@ -1,0 +1,18 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>center_focus.png</file>
+        <file>folder.png</file>
+        <file>navigate_before.png</file>
+        <file>navigate_next.png</file>
+        <file>pause.png</file>
+        <file>play.png</file>
+        <file>skip_next.png</file>
+        <file>skip_previous.png</file>
+        <file>zoom_in.png</file>
+        <file>zoom_out.png</file>
+        <file>close.png</file>
+        <file>save_alt.png</file>
+        <file>info.png</file>
+        <file>add_photo.png</file>
+    </qresource>
+</RCC>
