@@ -35,8 +35,7 @@ QWidget* sectionHeader(const QString& title)
 class PaletteWidget : public QWidget
 {
 public:
-    PaletteWidget(const uint8_t* pal, int count, QWidget* parent = nullptr)
-        : QWidget(parent), m_pal(pal), m_count(count)
+    PaletteWidget(const uint8_t* pal, int count, QWidget* parent = nullptr) : QWidget(parent), m_pal(pal), m_count(count)
     {
         setMouseTracking(true);
         int cols = 16, cs = 10;
@@ -111,7 +110,12 @@ void PropertiesPanel::onSpriteLoaded()
 void PropertiesPanel::onSpriteClosed()
 {
     QLayoutItem* item;
-    while ((item = m_layout->takeAt(0))) { delete item->widget(); delete item; }
+    while ((item = m_layout->takeAt(0))) 
+    { 
+        delete item->widget(); 
+        delete item; 
+    }
+    
     auto* ph = new QLabel("No file loaded");
     ph->setStyleSheet(QString("color: %1;").arg(SpriteColors::TextDim.name()));
     ph->setAlignment(Qt::AlignCenter);
@@ -125,7 +129,11 @@ void PropertiesPanel::onFrameChanged(int f)
 void PropertiesPanel::rebuild()
 {
     QLayoutItem* item;
-    while ((item = m_layout->takeAt(0))) { delete item->widget(); delete item; }
+    while ((item = m_layout->takeAt(0))) 
+    { 
+        delete item->widget(); 
+        delete item;
+    }
 
     AppState& st = m_main->state();
     SpriteLoader& ld = m_main->loader();
@@ -141,16 +149,14 @@ void PropertiesPanel::rebuild()
 
     auto* sprGrp = new QGroupBox("Sprite");
     auto* sprL = new QVBoxLayout(sprGrp);
-    const char* vn = (d.version == 1) ? "Quake" : (d.version == 2) ? "Half-Life" : "Unknown";
-    sprL->addWidget(propLabel("Version:", QString("%1 (%2)").arg(d.version).arg(vn)));
     sprL->addWidget(propLabel("Type:", SpriteLoader::GetTypeString(d.type)));
     sprL->addWidget(propLabel("Render:", SpriteLoader::GetTexFormatString(d.texFormat)));
     sprL->addWidget(propLabel("Cull:", SpriteLoader::GetFaceTypeString(d.facetype)));
     sprL->addWidget(propLabel("Bounds:", QString("%1 x %2").arg(d.bounds[0]).arg(d.bounds[1])));
-    sprL->addWidget(propLabel("Frames:", QString::number(st.total_frames)));
+    sprL->addWidget(propLabel("Frame(s):", QString::number(st.total_frames)));
     m_layout->addWidget(sprGrp);
 
-    auto* frGrp = new QGroupBox("Frame");
+    auto* frGrp = new QGroupBox("Frame(s)");
     auto* frL = new QVBoxLayout(frGrp);
     m_frameIndex = new QLabel;
     m_frameSize = new QLabel;

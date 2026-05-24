@@ -112,7 +112,9 @@ void FrameSlider::paintEvent(QPaintEvent*)
 
 void FrameSlider::mousePressEvent(QMouseEvent* event)
 {
-    if (!m_enabled || m_max <= m_min) return;
+    if (!m_enabled || m_max <= m_min) 
+        return;
+    
     if (event->button() == Qt::LeftButton)
     {
         m_dragging = true;
@@ -128,7 +130,9 @@ void FrameSlider::mousePressEvent(QMouseEvent* event)
 
 void FrameSlider::mouseMoveEvent(QMouseEvent* event)
 {
-    if (!m_dragging || !m_enabled) return;
+    if (!m_dragging || !m_enabled) 
+        return;
+    
     int v = posToValue(event->pos().x());
     if (v != m_value)
     {

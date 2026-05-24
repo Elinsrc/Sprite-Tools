@@ -289,8 +289,7 @@ void MainWindow::createToolBar()
     m_speedLabel = new QLabel("1.0x");
     m_speedLabel->setFixedWidth(32);
     m_speedLabel->setAlignment(Qt::AlignCenter);
-    m_speedLabel->setStyleSheet(
-        QString("font-size: 10px; color: %1;").arg(SpriteColors::TextDim.name()));
+    m_speedLabel->setStyleSheet(QString("font-size: 10px; color: %1;").arg(SpriteColors::TextDim.name()));
 
     m_speedSlider = new QSlider(Qt::Horizontal);
     m_speedSlider->setRange(1, 80);
@@ -365,8 +364,7 @@ void MainWindow::createDockWidgets()
     
     addDockWidget(Qt::RightDockWidgetArea, m_propsDock);
 
-    connect(m_propsDock, &QDockWidget::visibilityChanged,
-            m_actShowProps, &QAction::setChecked);
+    connect(m_propsDock, &QDockWidget::visibilityChanged, m_actShowProps, &QAction::setChecked);
 }
 
 void MainWindow::keyPressEvent(QKeyEvent* event)
@@ -377,17 +375,55 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
         event->accept();
         return;
     }
-    if (event->key() == Qt::Key_Left)  { onPrevFrame();  event->accept(); return; }
-    if (event->key() == Qt::Key_Right) { onNextFrame();  event->accept(); return; }
-    if (event->key() == Qt::Key_Home)  { onFirstFrame(); event->accept(); return; }
-    if (event->key() == Qt::Key_End)   { onLastFrame();  event->accept(); return; }
+
+    if (event->key() == Qt::Key_Left) 
+    { 
+        onPrevFrame();  
+        event->accept(); 
+        return; 
+    }
+
+    if (event->key() == Qt::Key_Right) 
+    { 
+        onNextFrame();  
+        event->accept(); 
+        return; 
+    }
+    
+    if (event->key() == Qt::Key_Home)  
+    { 
+        onFirstFrame(); 
+        event->accept(); 
+        return;
+    }
+    
+    if (event->key() == Qt::Key_End)   
+    { 
+        onLastFrame();  
+        event->accept(); 
+        return; 
+    }
 
     if (event->key() == Qt::Key_Plus || event->key() == Qt::Key_Equal)
-    { onZoomIn(); event->accept(); return; }
+    { 
+        onZoomIn(); 
+        event->accept(); 
+        return; 
+    }
+
     if (event->key() == Qt::Key_Minus)
-    { onZoomOut(); event->accept(); return; }
+    { 
+        onZoomOut(); 
+        event->accept(); 
+        return; 
+    }
+
     if (event->key() == Qt::Key_1)
-    { onZoomReset(); event->accept(); return; }
+    { 
+        onZoomReset(); 
+        event->accept(); 
+        return; 
+    }
 
     QMainWindow::keyPressEvent(event);
 }
@@ -437,7 +473,7 @@ void MainWindow::openFile(const QString& path)
     updateStatusInfo();
 
     statusBar()->showMessage(
-        QString("Loaded: %1 (%2 frames)")
+        QString("Loaded: %1 (%2 frame(s))")
             .arg(QFileInfo(path).fileName())
             .arg(m_state.total_frames), 4000);
 
@@ -505,7 +541,9 @@ void MainWindow::onAbout()
 
 void MainWindow::onPlayPause()
 {
-    if (!m_state.sprite_loaded || m_state.total_frames <= 1) return;
+    if (!m_state.sprite_loaded || m_state.total_frames <= 1) 
+        return;
+    
     m_state.animating = !m_state.animating;
     if (m_state.animating)
     {
@@ -593,8 +631,7 @@ void MainWindow::setFrame(int f)
     m_frameSlider->setValue(f);
     m_frameSlider->blockSignals(false);
 
-    m_framePosLabel->setText(
-        QString("%1/%2").arg(f + 1).arg(m_state.total_frames));
+    m_framePosLabel->setText(QString("%1/%2").arg(f + 1).arg(m_state.total_frames));
 
     emit frameChanged(f);
     updateStatusInfo();
@@ -625,8 +662,7 @@ void MainWindow::animTick()
     m_frameSlider->setValue(m_state.current_frame);
     m_frameSlider->blockSignals(false);
 
-    m_framePosLabel->setText(
-        QString("%1/%2").arg(m_state.current_frame + 1).arg(m_state.total_frames));
+    m_framePosLabel->setText(QString("%1/%2").arg(m_state.current_frame + 1).arg(m_state.total_frames));
 
     emit frameChanged(m_state.current_frame);
     updateStatusInfo();
@@ -634,18 +670,20 @@ void MainWindow::animTick()
 
 void MainWindow::updateTitle()
 {
-    setWindowTitle(m_state.sprite_loaded
-        ? QString::fromUtf8("Sprite-Tools \u2014 ")
-          + QFileInfo(QString::fromStdString(m_state.filepath)).fileName()
-        : "Sprite-Tools");
+    setWindowTitle(m_state.sprite_loaded ? QString::fromUtf8("Sprite-Tools \u2014 ") + QFileInfo(QString::fromStdString(m_state.filepath)).fileName() : "Sprite-Tools");
 }
 
 void MainWindow::updateStatusInfo()
 {
-    if (!m_state.sprite_loaded) { m_statusInfo->clear(); return; }
+    if (!m_state.sprite_loaded) 
+    { 
+        m_statusInfo->clear(); 
+        return; 
+    }
+
     const SpriteData& d = m_loader.GetData();
     m_statusInfo->setText(
-        QString("v%1  %2  %3 frames")
+        QString("v%1  %2  %3 frame(s)")
             .arg(d.version)
             .arg(SpriteLoader::GetTexFormatString(d.texFormat))
             .arg(m_state.total_frames));
@@ -691,7 +729,10 @@ void MainWindow::dragEnterEvent(QDragEnterEvent* event)
     if (event->mimeData()->hasUrls())
         for (const QUrl& u : event->mimeData()->urls())
             if (u.toLocalFile().endsWith(".spr", Qt::CaseInsensitive))
-            { event->acceptProposedAction(); return; }
+            { 
+                event->acceptProposedAction(); 
+                return; 
+            }
 }
 
 void MainWindow::dropEvent(QDropEvent* event)

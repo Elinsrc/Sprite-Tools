@@ -170,16 +170,6 @@ fun ImportDialog(
                     label = stringResource(R.string.create_label_name)
                 )
 
-                Row(
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(stringResource(R.string.create_label_version), fontSize = 12.sp, color = SpriteColors.TextDim, modifier = Modifier.width(70.dp))
-                    RadioButton(selected = version == 1, onClick = { version = 1 }, label = stringResource(R.string.version_quake))
-                    Spacer(Modifier.width(8.dp))
-                    RadioButton(selected = version == 2, onClick = { version = 2 }, label = stringResource(R.string.version_hl))
-                }
-
                 Dropdown(
                     label = stringResource(R.string.create_label_type),
                     selected = SprType.entries[selectedType].getLabel(context),
@@ -187,14 +177,13 @@ fun ImportDialog(
                     onSelect = { selectedType = it }
                 )
 
-                if (version == 2) {
-                    Dropdown(
-                        label = stringResource(R.string.create_label_render),
-                        selected = SprTexFormat.entries[selectedTexFmt].getLabel(context),
-                        items = SprTexFormat.entries.map { it.getLabel(context) },
-                        onSelect = { selectedTexFmt = it }
-                    )
-                }
+
+                Dropdown(
+                    label = stringResource(R.string.create_label_render),
+                    selected = SprTexFormat.entries[selectedTexFmt].getLabel(context),
+                    items = SprTexFormat.entries.map { it.getLabel(context) },
+                    onSelect = { selectedTexFmt = it }
+                )
 
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

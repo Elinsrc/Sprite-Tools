@@ -1,5 +1,6 @@
 #include "import_dialog.h"
 #include "sprite_converter.h"
+#include "core/sprite.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -63,7 +64,8 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
     lay->addWidget(setLbl);
     lay->addSpacing(12);
 
-    auto addRow = [&](const QString& label, QWidget* w) -> QWidget* {
+    auto addRow = [&](const QString& label, QWidget* w) -> QWidget* 
+    {
         auto* container = new QWidget;
         auto* r = new QHBoxLayout(container);
         r->setContentsMargins(0, 0, 0, 0);
@@ -77,22 +79,6 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
         return container;
     };
 
-    auto* verW = new QWidget;
-    auto* verL = new QHBoxLayout(verW);
-    verL->setContentsMargins(0,0,0,0);
-    auto* v1 = new QRadioButton("Quake (v1)");
-    auto* v2 = new QRadioButton("Half-Life (v2)");
-    verL->addWidget(v1);
-    verL->addWidget(v2);
-    verL->addStretch();
-
-    m_versionCombo = new QComboBox;
-    m_versionCombo->addItem("v1", 1); 
-    m_versionCombo->addItem("v2", 2);
-    m_versionCombo->setVisible(false);
-
-    addRow("Version:", verW);
-
     m_typeCombo = new QComboBox;
     m_typeCombo->addItems({"Parallel Upright", "Facing Upright", "Parallel", "Oriented", "Parallel Oriented"});
     m_typeCombo->setCurrentIndex(2);
@@ -100,7 +86,7 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
 
     m_renderCombo = new QComboBox;
     m_renderCombo->addItems({"Normal", "Additive", "Index Alpha", "Alpha Test"});
-    QWidget* renderRowWidget = addRow("Render:", m_renderCombo);
+    addRow("Render:", m_renderCombo);
 
     auto* intW = new QWidget;
     auto* intL = new QHBoxLayout(intW);
@@ -121,28 +107,13 @@ ImportDialog::ImportDialog(QWidget* parent, AppState& state) : QDialog(parent), 
     intL->addWidget(intValLbl);
     addRow("Interval:", intW);
 
-    connect(v1, &QRadioButton::toggled, [this, renderRowWidget](bool checked) {
-        if(checked) {
-            m_versionCombo->setCurrentIndex(0);
-            m_renderCombo->setCurrentIndex(0);
-            renderRowWidget->setVisible(false);
-        }
-    });
-
-    connect(v2, &QRadioButton::toggled, [this, renderRowWidget](bool checked) {
-        if(checked) {
-            m_versionCombo->setCurrentIndex(1);
-            renderRowWidget->setVisible(true);
-        }
-    });
-
-    connect(intSl, &QSlider::valueChanged, [this, intValLbl](int v) {
+    connect(intSl, &QSlider::valueChanged, [this, intValLbl](int v) 
+    {
         float val = v / 100.0f;
         m_intervalSpin->setValue((double)val);
         intValLbl->setText(QString::number(val, 'f', 2) + "s");
     });
 
-    v2->setChecked(true);
     intSl->setValue(10);
     m_intervalSpin->setValue(0.1);
 
@@ -234,12 +205,10 @@ void ImportDialog::onCreate()
     if (savePath.isEmpty()) return;
     if (!savePath.endsWith(".spr", Qt::CaseInsensitive)) savePath += ".spr";
 
-    int version = m_versionCombo->itemData(m_versionCombo->currentIndex()).toInt();
+    int version = SPRITE_VERSION_HL;  // Always use Half-Life format
     int type = m_typeCombo->currentIndex();
     int texFmt = m_renderCombo->currentIndex();
     float interval = (float)m_intervalSpin->value();
-
-    if (version == 1) texFmt = 0;
 
     QProgressDialog prog("Creating sprite...", "Cancel", 0, 100, this);
     prog.setWindowTitle("Creating Sprite");
@@ -271,7 +240,8 @@ void ImportDialog::onCreate()
         heights.push_back(h);
     }
 
-    for (auto& v : storage) ptrs.push_back(v.data());
+    for (auto& v : storage) 
+        ptrs.push_back(v.data());
 
     prog.setLabelText("Building sprite..."); 
     prog.setValue(50);

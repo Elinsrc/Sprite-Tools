@@ -14,11 +14,6 @@ data class SpriteInfo(
     val numGroups: Int,
     val paletteColors: Int
 ) {
-    fun getVersionName(context: Context): String = when (version) {
-        1 -> context.getString(R.string.version_quake)
-        2 -> context.getString(R.string.version_hl)
-        else -> context.getString(R.string.unknown)
-    }
 
     fun getTypeName(context: Context): String = when (type) {
         0 -> context.getString(R.string.type_parallel_upright)

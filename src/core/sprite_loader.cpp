@@ -6,7 +6,9 @@
 template<typename T>
 static bool ReadVal(const uint8_t*& ptr, const uint8_t* end, T& val)
 {
-    if (ptr + sizeof(T) > end) return false;
+    if (ptr + sizeof(T) > end) 
+        return false;
+    
     memcpy(&val, ptr, sizeof(T));
     ptr += sizeof(T);
     return true;
@@ -14,7 +16,9 @@ static bool ReadVal(const uint8_t*& ptr, const uint8_t* end, T& val)
 
 static bool ReadBytes(const uint8_t*& ptr, const uint8_t* end, void* dst, size_t count)
 {
-    if (ptr + count > end) return false;
+    if (ptr + count > end)
+        return false;
+    
     memcpy(dst, ptr, count);
     ptr += count;
     return true;
@@ -71,96 +75,18 @@ bool SpriteLoader::Load(const std::string& filepath)
     m_data.version = header.version;
 
     bool result = false;
-    switch (header.version)
+    if (header.version == SPRITE_VERSION_HL)
     {
-    case SPRITE_VERSION_Q1:
-        result = LoadQ1Sprite(buffer.data(), filesize);
-        break;
-    case SPRITE_VERSION_HL:
         result = LoadHLSprite(buffer.data(), filesize);
-        break;
-    default:
-        fprintf(stderr, "Unknown sprite version: %d\n", header.version);
+    }
+    else
+    {
+        fprintf(stderr, "Unsupported sprite version: %d (only Half-Life sprite format is supported)\n", header.version);
         return false;
     }
 
     m_data.loaded = result;
     return result;
-}
-
-bool SpriteLoader::LoadQ1Sprite(const uint8_t* data, size_t size)
-{
-    const uint8_t* ptr = data;
-    const uint8_t* end = data + size;
-
-    dsprite_q1_t header;
-    if (!ReadBytes(ptr, end, &header, sizeof(header)))
-        return false;
-
-    m_data.type = (uint32_t)header.type;
-    m_data.texFormat = SPR_NORMAL;
-    m_data.boundingradius = header.boundingradius;
-    m_data.bounds[0] = header.bounds[0];
-    m_data.bounds[1] = header.bounds[1];
-    m_data.numframes = header.numframes;
-    m_data.synctype = header.synctype;
-    m_data.facetype = SPR_CULL_FRONT;
-
-    m_data.palette_colors = 256;
-    for (int i = 0; i < 256; i++)
-    {
-        m_data.palette[i * 3 + 0] = (uint8_t)i;
-        m_data.palette[i * 3 + 1] = (uint8_t)i;
-        m_data.palette[i * 3 + 2] = (uint8_t)i;
-    }
-
-    for (int i = 0; i < header.numframes; i++)
-    {
-        dframetype_t ft;
-        if (!ReadVal(ptr, end, ft))
-            return false;
-
-        SpriteFrameGroup group;
-        group.type = (frametype_t)ft.type;
-
-        if (ft.type == FRAME_SINGLE)
-        {
-            SpriteFrame frame;
-            if (!ReadFrame(ptr, end, frame, false))
-                return false;
-            ConvertFrameToRGBA(frame, false);
-            frame.interval = 0.1f;
-            group.frames.push_back(std::move(frame));
-        }
-        else
-        {
-            dspritegroup_t sg;
-            if (!ReadVal(ptr, end, sg))
-                return false;
-
-            for (int j = 0; j < sg.numframes; j++)
-            {
-                dspriteinterval_t interval;
-                if (!ReadVal(ptr, end, interval))
-                    return false;
-                group.intervals.push_back(interval.interval);
-            }
-
-            for (int j = 0; j < sg.numframes; j++)
-            {
-                SpriteFrame frame;
-                if (!ReadFrame(ptr, end, frame, false))
-                    return false;
-                ConvertFrameToRGBA(frame, false);
-                frame.interval = (j < (int)group.intervals.size()) ? group.intervals[j] : 0.1f;
-                group.frames.push_back(std::move(frame));
-            }
-        }
-
-        m_data.groups.push_back(std::move(group));
-    }
-
-    return true;
 }
 
 bool SpriteLoader::LoadHLSprite(const uint8_t* data, size_t size)
@@ -416,17 +342,14 @@ bool SpriteLoader::LoadFromMemory(const uint8_t* data, size_t size, const std::s
     m_data.version  = header.version;
 
     bool result = false;
-    switch (header.version)
+    if (header.version == SPRITE_VERSION_HL)
     {
-        case SPRITE_VERSION_Q1:
-            result = LoadQ1Sprite(data, size);
-            break;
-        case SPRITE_VERSION_HL:
-            result = LoadHLSprite(data, size);
-            break;
-        default:
-            fprintf(stderr, "Unknown sprite version: %d\n", header.version);
-            return false;
+        result = LoadHLSprite(data, size);
+    }
+    else
+    {
+        fprintf(stderr, "Unsupported sprite version: %d (only Half-Life sprite format is supported)\n", header.version);
+        return false;
     }
 
     m_data.loaded = result;

@@ -30,8 +30,7 @@ void SpriteViewport::rebuildImages()
             m_images.emplace_back();
             continue;
         }
-        QImage img(f->rgba.data(), f->width, f->height,
-                   f->width * 4, QImage::Format_RGBA8888);
+        QImage img(f->rgba.data(), f->width, f->height, f->width * 4, QImage::Format_RGBA8888);
         m_images.push_back(img.copy());
     }
 }
@@ -50,8 +49,10 @@ void SpriteViewport::drawChecker(QPainter& painter, const QRectF& rect)
     int endX = static_cast<int>(rect.right() / cell) + 1;
     int endY = static_cast<int>(rect.bottom() / cell) + 1;
 
-    for (int y = startY; y < endY; y++) {
-        for (int x = startX; x < endX; x++) {
+    for (int y = startY; y < endY; y++)
+    {
+        for (int x = startX; x < endX; x++) 
+        {
             QColor c = ((x + y) % 2 == 0) ? color1 : color2;
             painter.fillRect(QRectF(x * cell, y * cell, cell, cell), c);
         }
@@ -96,7 +97,9 @@ void SpriteViewport::paintEvent(QPaintEvent*)
     }
 
     int idx = s.current_frame;
-    if (idx < 0 || idx >= (int)m_images.size()) return;
+    
+    if (idx < 0 || idx >= (int)m_images.size()) 
+        return;
 
     const QImage& img = m_images[idx];
     if (img.isNull()) 

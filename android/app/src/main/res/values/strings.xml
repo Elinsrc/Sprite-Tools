@@ -42,16 +42,15 @@
     <string name="create_section_settings">Sprite Settings</string>
     <string name="create_num_images">%d image(s)</string>
     <string name="create_label_name">Name</string>
-    <string name="create_label_version">Version</string>
     <string name="create_label_type">Type</string>
     <string name="create_label_render">Render</string>
     <string name="create_label_interval">Interval</string>
-    <string name="about_desc">Sprite viewer and creator for Quake / Half-Life sprite formats</string>
-    <string name="status_loaded">Loaded: %1$s (%2$d frames)</string>
+    <string name="about_desc">Sprite viewer and creator for Half-Life sprite formats</string>
+    <string name="status_loaded">Loaded: %1$s (%2$d frame(s))</string>
     <string name="status_failed">Failed to load file</string>
     <string name="status_closed">Closed</string>
     <string name="status_error">Error: %s</string>
-    <string name="info_format">v%1$d %2$s %3$dfr</string>
+    <string name="info_format">v%1$d %2$s %3$d frame(s)</string>
     <string name="progress_working">Working</string>
     <string name="progress_success">Success!</string>
     <string name="progress_failed">Failed</string>
@@ -92,8 +91,6 @@
     <string name="progress_building_sprite">Building sprite…</string>
     <string name="progress_created_summary">Created: %1$s\nPath: %2$s\n%3$d frame(s)</string>
 
-    <string name="version_quake">Quake</string>
-    <string name="version_hl">Half-Life</string>
     <string name="unknown">Unknown</string>
     <string name="cull_front">Cull Front</string>
     <string name="no_cull">No Cull</string>

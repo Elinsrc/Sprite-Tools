@@ -13,10 +13,12 @@ extern "C" {
 
 SpriteHandle sprite_load_file(const char* filepath)
 {
-    if (!filepath) return nullptr;
+    if (!filepath) 
+        return nullptr;
 
     auto* h = new (std::nothrow) SpriteHandle_s();
-    if (!h) return nullptr;
+    if (!h) 
+        return nullptr;
 
     h->name = filepath;
     if (!h->loader.Load(filepath)) {
@@ -28,10 +30,12 @@ SpriteHandle sprite_load_file(const char* filepath)
 
 SpriteHandle sprite_load_memory(const uint8_t* data, size_t size, const char* name)
 {
-    if (!data || size == 0) return nullptr;
+    if (!data || size == 0) 
+        return nullptr;
 
     auto* h = new (std::nothrow) SpriteHandle_s();
-    if (!h) return nullptr;
+    if (!h) 
+        return nullptr;
 
     h->name = name ? name : "memory";
     if (!h->loader.LoadFromMemory(data, size, h->name)) {
@@ -52,7 +56,8 @@ int sprite_get_info(SpriteHandle handle, SpriteInfo* info)
         return -1;
 
     const SpriteData& d = handle->loader.GetData();
-    if (!d.loaded) return -1;
+    if (!d.loaded) 
+        return -1;
 
     info->version = d.version;
     info->type = d.type;
@@ -75,8 +80,10 @@ int sprite_get_frame_info(SpriteHandle handle, int frame_index, FrameInfo* info)
     const SpriteData& d = handle->loader.GetData();
     int current = 0;
 
-    for (int gi = 0; gi < (int)d.groups.size(); gi++) {
-        for (int fi = 0; fi < (int)d.groups[gi].frames.size(); fi++) {
+    for (int gi = 0; gi < (int)d.groups.size(); gi++) 
+    {
+        for (int fi = 0; fi < (int)d.groups[gi].frames.size(); fi++) 
+        {
             if (current == frame_index) 
             {
                 const SpriteFrame& f = d.groups[gi].frames[fi];

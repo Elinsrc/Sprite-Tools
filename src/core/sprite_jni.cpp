@@ -153,11 +153,14 @@ Java_com_spritetools_core_SpriteNative_nativeGetFrameARGB(JNIEnv* env, jclass, j
         return nullptr;
 
     jintArray arr = env->NewIntArray((jsize)count);
-    if (!arr) return nullptr;
+    if (!arr) 
+        return nullptr;
 
     jint* dest = (jint*)env->GetPrimitiveArrayCritical(arr, nullptr);
-    if (dest) {
-        for (size_t i = 0; i < count; i++) {
+    if (dest) 
+    {
+        for (size_t i = 0; i < count; i++) 
+        {
             uint32_t r = rgba[i * 4 + 0];
             uint32_t g = rgba[i * 4 + 1];
             uint32_t b = rgba[i * 4 + 2];
@@ -275,7 +278,8 @@ Java_com_spritetools_core_SpriteNative_nativeCreateSprFromImages(JNIEnv* env, jc
     if (count <= 0) 
         return nullptr;
 
-    if (env->EnsureLocalCapacity(count + 16) < 0) {
+    if (env->EnsureLocalCapacity(count + 16) < 0) 
+    {
         LOGE("nativeCreateSprFromImages: failed to ensure local capacity for %d elements", count);
         return nullptr;
     }
@@ -309,7 +313,8 @@ Java_com_spritetools_core_SpriteNative_nativeCreateSprFromImages(JNIEnv* env, jc
 
     int result = sprite_create_from_buffers(ptrs.data(), sizes.data(), count, version, type, texFormat, interval, &out_data, &out_size);
 
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) 
+    {
         env->ReleaseByteArrayElements(entries[i].arr, entries[i].bytes, JNI_ABORT);
         env->DeleteLocalRef(entries[i].arr); // Clean up local refs manually just in case
     }

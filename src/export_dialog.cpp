@@ -146,6 +146,5 @@ void ExportDialog::onExport()
     }
 
     if (!prog.wasCanceled())
-        QMessageBox::information(parentWidget(), "Export Complete",
-            QString("Exported %1 file(s) to:\n%2").arg(exported).arg(dir));
+        QMessageBox::information(parentWidget(), "Export Complete", QString("Exported %1 file(s) to:\n%2").arg(exported).arg(dir));
 }

@@ -72,7 +72,6 @@ public:
     bool LoadFromMemory(const uint8_t* data, size_t size, const std::string& name);
 
 private:
-    bool LoadQ1Sprite(const uint8_t* data, size_t size);
     bool LoadHLSprite(const uint8_t* data, size_t size);
 
     bool ReadFrame(const uint8_t*& ptr, const uint8_t* end, SpriteFrame& frame, bool is32bit);

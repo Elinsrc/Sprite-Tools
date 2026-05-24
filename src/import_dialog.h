@@ -32,7 +32,6 @@ private:
     AppState& m_state;
     QString m_outputFile;
     QListWidget* m_fileList;
-    QComboBox* m_versionCombo;
     QComboBox* m_typeCombo;
     QComboBox* m_renderCombo;
     QDoubleSpinBox* m_intervalSpin;
@@ -41,7 +40,8 @@ private:
 
 class FileListItem : public QWidget {
 public:
-    FileListItem(const QString& name, std::function<void()> onRemove) {
+    FileListItem(const QString& name, std::function<void()> onRemove) 
+    {
         auto* l = new QHBoxLayout(this);
 
         auto* txt = new QLabel(name);

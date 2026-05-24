@@ -64,7 +64,8 @@ bool SpriteConverter::LoadImageRGBA(const std::string& path, std::vector<uint8_t
 {
     int ch = 0;
     uint8_t* px = stbi_load(path.c_str(), &w, &h, &ch, 4);
-    if (!px) return false;
+    if (!px) 
+        return false;
     rgba.assign(px, px + (size_t)w * h * 4);
     stbi_image_free(px);
     return true;
@@ -448,22 +449,6 @@ bool SpriteConverter::WriteSprData(const std::vector<QuantizedImage>& frames, co
         int16_t pal_size = (int16_t)ref.palette_count;
         BinWrite(out, pal_size);
         BinWriteBytes(out, ref.palette, pal_size * 3);
-    }
-    else if (params.version == SPRITE_VERSION_Q1)
-    {
-        dsprite_q1_t hdr;
-        memset(&hdr, 0, sizeof(hdr));
-        hdr.ident = IDSPRITEHEADER;
-        hdr.version = SPRITE_VERSION_Q1;
-        hdr.type = (int32_t)params.type;
-        hdr.boundingradius = bounding_radius;
-        hdr.bounds[0] = max_w;
-        hdr.bounds[1] = max_h;
-        hdr.numframes = (int32_t)frames.size();
-        hdr.beamlength = 0.0f;
-        hdr.synctype = params.sync_type;
-
-        BinWriteBytes(out, &hdr, sizeof(hdr));
     }
     else
     {

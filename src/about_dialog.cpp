@@ -18,7 +18,7 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent)
     lay->addWidget(nameLbl);
     lay->addSpacing(6);
 
-    auto* descLbl = new QLabel("Sprite viewer and creator for Quake / Half-Life sprites");
+    auto* descLbl = new QLabel("Sprite viewer and creator for Half-Life sprites");
     descLbl->setStyleSheet(QString("font-size: 12px; color: %1;").arg(SpriteColors::TextPrimary.name()));
     descLbl->setWordWrap(true);
     lay->addWidget(descLbl);

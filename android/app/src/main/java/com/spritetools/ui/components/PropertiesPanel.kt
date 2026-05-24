@@ -40,7 +40,6 @@ fun PropertiesPanel(
         val info = state.spriteInfo
         if (info != null) {
             SectionHeader(stringResource(R.string.section_sprite))
-            PropRow(stringResource(R.string.prop_version), info.getVersionName(context))
             PropRow(stringResource(R.string.prop_type), info.getTypeName(context))
             PropRow(stringResource(R.string.prop_render), info.getTexFormatName(context))
             PropRow(stringResource(R.string.prop_cull), info.getFaceTypeName(context))

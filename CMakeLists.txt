@@ -42,6 +42,7 @@ else()
         set(QT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/external/6.10.0/gcc_64")
     endif()
 
+    set(CMAKE_PREFIX_PATH ${QT_ROOT})
     find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets NO_DEFAULT_PATH PATHS ${QT_ROOT})
     qt_standard_project_setup()
 
