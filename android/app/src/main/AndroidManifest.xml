@@ -7,6 +7,7 @@
         android:maxSdkVersion="29" />
 
     <application
+        android:icon="@mipmap/ic_launcher"
         android:allowBackup="true"
         android:label="Sprite-Tools"
         android:supportsRtl="true"

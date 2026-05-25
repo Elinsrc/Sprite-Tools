@@ -9,6 +9,7 @@ int main(int argc, char* argv[])
     QCoreApplication::addLibraryPath(QCoreApplication::applicationDirPath());
     app.setStyle(QStyleFactory::create("Fusion"));
     app.setApplicationName("Sprite-Tools");
+    app.setWindowIcon(QIcon(":/icons/app.png"));
     app.setPalette(Theme::darkPalette());
     app.setStyleSheet(Theme::globalStyleSheet());
 

@@ -73,6 +73,7 @@ else()
     )
 
     if(PLATFORM_WIN32)
+        list(APPEND SOURCES resources/app.rc)
         add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS})
     else()
         add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})

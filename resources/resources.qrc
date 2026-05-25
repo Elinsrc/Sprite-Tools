@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/icons">
+        <file>app.png</file>
         <file>center_focus.png</file>
         <file>folder.png</file>
         <file>navigate_before.png</file>
